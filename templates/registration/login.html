@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Вход{% endblock %}
+{% block content %}
+<div class="row justify-content-center py-5">
+    <div class="col-md-6 col-lg-5">
+        <div class="form-card p-5">
+            <div class="text-center mb-5">
+                <h1 class="h2 fw-bold text-success mb-3">Вход в систему</h1>
+                <p class="text-muted">Добро пожаловать обратно</p>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label class="form-label fw-medium text-dark">{{ form.username.label }}</label>
+                    <input type="text" class="form-control form-input" name="{{ form.username.name }}" placeholder="Логин" required autofocus>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-medium text-dark">{{ form.password.label }}</label>
+                    <input type="password" class="form-control form-input" name="{{ form.password.name }}" placeholder="Пароль" required>
+                </div>
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger rounded-3 mb-4">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <button type="submit" class="btn btn-custom w-100 mb-4 text-white">Войти</button>
+                <div class="text-center">
+                    <a href="{% url 'signup' %}" class="text-decoration-none fw-medium text-success">Создать аккаунт</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

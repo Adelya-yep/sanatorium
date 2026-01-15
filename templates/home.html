@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Главная{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h1>Добро пожаловать в санаторий!</h1>
+        <p>Система управления гостями и лечебными процессами.</p>
+        {% if user.is_authenticated %}
+            <div class="alert alert-success">Вы авторизованы как {{ user.username }}.</div>
+        {% else %}
+            <div class="alert alert-info">
+                <a href="{% url 'login' %}" class="btn btn-primary">Войти</a>
+                <a href="{% url 'signup' %}" class="btn btn-outline-primary ms-2">Регистрация</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Дашборд{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <h1 class="h2 fw-bold text-success mb-5 text-center">
+        {% if user.is_superuser %}Административная панель{% else %}Личный кабинет{% endif %}
+    </h1>
+    <div class="col-lg-{% if user.is_superuser %}12{% else %}10{% endif %}">
+        <div class="row g-4">
+            <!-- Бронирование (всегда) -->
+            <div class="col-md-6 col-lg-3">
+                <div class="form-card p-4 text-center h-100">
+                    <div class="mb-3 text-success fs-1">🏨</div>
+                    <h3 class="text-success mb-2">Бронирование</h3>
+                    <p class="text-muted small mb-3">Выберите номер и даты</p>
+                    <a href="{% url 'booking' %}" class="btn btn-custom w-100 text-white">Перейти</a>
+                </div>
+            </div>
+            <!-- Процедуры (всегда) -->
+            <div class="col-md-6 col-lg-3">
+                <div class="form-card p-4 text-center h-100">
+                    <div class="mb-3 text-success fs-1">🩺</div>
+                    <h3 class="text-success mb-2">Процедуры</h3>
+                    <p class="text-muted small mb-3">Запишитесь к терапевту</p>
+                    <a href="{% url 'procedures' %}" class="btn btn-custom w-100 text-white">Перейти</a>
+                </div>
+            </div>
+            <!-- Профиль (всегда) -->
+            <div class="col-md-6 col-lg-3">
+                <div class="form-card p-4 text-center h-100">
+                    <div class="mb-3 text-success fs-1">👤</div>
+                    <h3 class="text-success mb-2">Профиль</h3>
+                    <p class="text-muted small mb-3">Личные данные</p>
+                    <a href="{% url 'profile' %}" class="btn btn-custom w-100 text-white">Перейти</a>
+                </div>
+            </div>
+            <!-- Выход (всегда) -->
+            <div class="col-md-6 col-lg-3">
+                <div class="form-card p-4 text-center h-100 border-warning">
+                    <div class="mb-3 text-warning fs-1">🚪</div>
+                    <h3 class="text-warning mb-2">Выход</h3>
+                    <p class="text-muted small mb-3">{{ user.username }}</p>
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-warning w-100">Выйти</button>
+                    </form>
+                </div>
+            </div>
+            {% if user.is_superuser %}
+            <!-- Админка (только суперюзер) -->
+            <div class="col-md-6 col-lg-3">
+                <div class="form-card p-4 text-center h-100 border-primary">
+                    <div class="mb-3 text-primary fs-1">⚙️</div>
+                    <h3 class="text-primary mb-2">Админ-панель</h3>
+                    <p class="text-muted small mb-3">Управление системой</p>
+                    <a href="/admin/" class="btn btn-outline-primary w-100">Открыть</a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
