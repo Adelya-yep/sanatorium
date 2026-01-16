@@ -12,7 +12,7 @@
         }
         .form-card {
             background: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            border: none; max-width: 420px; margin: auto;
+            border: none; margin: auto; /* Убрал max-width, чтобы карточки были гибкими */
         }
         .form-input {
             border: 2px solid #e9ecef; border-radius: 12px; padding: 15px;
@@ -28,23 +28,59 @@
     </style>
 </head>
 <body class="py-5">
+    <!-- Навигация -->
     <nav class="navbar navbar-expand-lg navbar-custom fixed-top shadow-lg">
         <div class="container">
             <a class="navbar-brand fw-bold text-white fs-4" href="{% url 'home' %}">Санаторий</a>
-            <div class="navbar-nav ms-auto">
-                {% if user.is_authenticated %}
+
+            <!-- Кнопка для мобильных -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarMain">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link text-white {% if request.path == '/' %}active{% endif %}"
+                           href="{% url 'home' %}">Главная</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white {% if 'rooms' in request.path %}active{% endif %}"
+                           href="{% url 'rooms' %}">Номера</a>
+                    </li>
+                    {% if user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link text-white {% if 'booking' in request.path %}active{% endif %}"
+                           href="{% url 'booking_list' %}">Мои брони</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white {% if 'profile' in request.path %}active{% endif %}"
+                           href="{% url 'profile' %}">Профиль</a>
+                    </li>
+                    {% endif %}
+                </ul>
+
+                <div class="navbar-nav ms-auto">
+                    {% if user.is_authenticated %}
                     <span class="navbar-text text-white-50 me-3">{{ user.username }}</span>
                     <form method="post" action="{% url 'logout' %}" class="d-inline">
                         {% csrf_token %}
                         <button class="btn btn-outline-light btn-sm">Выход</button>
                     </form>
-                {% endif %}
+                    {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm me-2">Вход</a>
+                    <a href="{% url 'signup' %}" class="btn btn-light btn-sm">Регистрация</a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </nav>
+
+    <!-- Основное содержимое -->
     <main class="container py-5 mt-5">
         {% block content %}{% endblock %}
     </main>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

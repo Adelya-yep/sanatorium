@@ -12,7 +12,9 @@ from .forms import BookingForm
 from .models import Booking, GuestProfile
 from django.shortcuts import render
 from accounts.models import Room
-
+# Добавьте в начало views.py (после других импортов):
+from django.core.paginator import Paginator
+from .models import Room
 class SignUpView(CreateView):
     form_class = GuestRegistrationForm  # Замена!
     success_url = reverse_lazy('home')
@@ -76,3 +78,47 @@ def landing(request):
         'featured_rooms': featured_rooms,
     }
     return render(request, 'landing.html', context)
+
+
+
+
+
+class RoomListView(ListView):
+    model = Room
+    template_name = 'catalog/rooms.html'  # Создайте эту папку
+    context_object_name = 'rooms'
+    paginate_by = 6
+
+    def get_queryset(self):
+        queryset = Room.objects.filter(is_active=True)
+
+        # Фильтр по типу
+        room_type = self.request.GET.get('type')
+        if room_type:
+            queryset = queryset.filter(type=room_type)
+
+        # Фильтр по вместимости
+        capacity = self.request.GET.get('capacity')
+        if capacity:
+            if capacity == '4':
+                queryset = queryset.filter(capacity__gte=4)
+            else:
+                queryset = queryset.filter(capacity=capacity)
+
+        # Фильтр по максимальной цене
+        max_price = self.request.GET.get('max_price')
+        if max_price:
+            try:
+                queryset = queryset.filter(price_per_day__lte=float(max_price))
+            except ValueError:
+                pass
+
+        return queryset.order_by('type', 'price_per_day')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Добавляем параметры фильтров в контекст для пагинации
+        context['filter_params'] = self.request.GET.copy()
+        if 'page' in context['filter_params']:
+            del context['filter_params']['page']
+        return context

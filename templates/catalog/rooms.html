@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Каталог номеров - Санаторий{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Заголовок -->
+    <div class="text-center mb-5">
+        <h1 class="fw-bold text-success mb-3">Каталог номеров</h1>
+        <p class="lead text-muted">Выберите номер для вашего отдыха</p>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="row mb-5">
+        <div class="col-lg-12">
+            <div class="form-card p-4">
+                <h5 class="fw-semibold text-dark mb-3">Фильтровать номера:</h5>
+                <form method="get" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Тип номера</label>
+                        <select name="type" class="form-select form-input">
+                            <option value="">Все типы</option>
+                            <option value="standard" {% if request.GET.type == 'standard' %}selected{% endif %}>Стандарт</option>
+                            <option value="comfort" {% if request.GET.type == 'comfort' %}selected{% endif %}>Комфорт</option>
+                            <option value="lux" {% if request.GET.type == 'lux' %}selected{% endif %}>Люкс</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Вместимость (чел.)</label>
+                        <select name="capacity" class="form-select form-input">
+                            <option value="">Любая</option>
+                            <option value="1" {% if request.GET.capacity == '1' %}selected{% endif %}>1</option>
+                            <option value="2" {% if request.GET.capacity == '2' %}selected{% endif %}>2</option>
+                            <option value="3" {% if request.GET.capacity == '3' %}selected{% endif %}>3</option>
+                            <option value="4" {% if request.GET.capacity == '4' %}selected{% endif %}>4+</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Цена до (₽/сутки)</label>
+                        <input type="number" name="max_price" class="form-control form-input" 
+                               placeholder="10000" value="{{ request.GET.max_price }}">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-custom w-100 text-white">Найти</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Сетка номеров -->
+    <div class="row g-4">
+        {% for room in rooms %}
+        <div class="col-lg-4 col-md-6">
+            <div class="form-card h-100 d-flex flex-column">
+                <!-- Изображение -->
+                {% if room.image %}
+                <img src="{{ room.image.url }}" class="card-img-top rounded-top" alt="{{ room.name }}"
+                     style="height: 250px; object-fit: cover;">
+                {% else %}
+                <div class="bg-light d-flex align-items-center justify-content-center rounded-top" 
+                     style="height: 250px;">
+                    <i class="bi bi-house-door text-secondary fs-1"></i>
+                </div>
+                {% endif %}
+
+                <!-- Контент -->
+                <div class="p-4 flex-grow-1">
+                    <!-- Бейдж типа -->
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill">
+                            {{ room.get_type_display }}
+                        </span>
+                        <span class="badge bg-info bg-opacity-10 text-info px-3 py-2 rounded-pill">
+                            до {{ room.capacity }} чел.
+                        </span>
+                    </div>
+
+                    <!-- Название и описание -->
+                    <h4 class="fw-bold text-dark mb-3">{{ room.name }}</h4>
+                    <p class="text-muted mb-4">{{ room.description|truncatechars:120 }}</p>
+
+                    <!-- Цена -->
+                    <div class="mt-auto">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="h3 fw-bold text-success">{{ room.price_per_day }} ₽</span>
+                                <small class="text-muted d-block">за сутки</small>
+                            </div>
+                            {% if user.is_authenticated %}
+                            <a href="{% url 'booking_create' %}?room_type={{ room.type }}" 
+                               class="btn btn-custom text-white px-4">
+                                Забронировать
+                            </a>
+                            {% else %}
+                            <a href="{% url 'login' %}?next={% url 'rooms' %}" 
+                               class="btn btn-outline-success px-4">
+                                Войдите для брони
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="form-card text-center p-5">
+                <i class="bi bi-search text-muted fs-1 mb-3"></i>
+                <h4 class="text-muted">Номера не найдены</h4>
+                <p class="text-muted">Попробуйте изменить параметры фильтра</p>
+                <a href="{% url 'rooms' %}" class="btn btn-custom text-white">Сбросить фильтры</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Пагинация -->
+    {% if is_paginated %}
+    <nav class="mt-5">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Назад</a>
+            </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ num }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Вперед</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+{% endblock %}
