@@ -1,61 +1,148 @@
 {% extends 'base.html' %}
 {% load widget_tweaks %}
 
-{% block title %}Новое бронирование{% endblock %}
+{% block title %}Бронирование номера{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center py-5">
-    <div class="col-md-10 col-lg-8">
+<div class="row justify-content-center">
+    <div class="col-lg-8">
         <div class="form-card p-5">
             <div class="text-center mb-5">
-                <i class="bi bi-calendar-check text-success fs-1 mb-3"></i>
-                <h1 class="h2 fw-bold text-success mb-3">Новое бронирование</h1>
+                <h1 class="fw-bold text-success mb-3">Бронирование номера</h1>
+                <p class="text-muted">Заполните данные для бронирования</p>
             </div>
-            
-            <form method="post">
+
+            <form method="post" id="booking-form">
                 {% csrf_token %}
-                
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
+
+                <!-- Ошибки формы -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger rounded-3 mb-4">
+                        {{ form.non_field_errors }}
+                    </div>
                 {% endif %}
-                
-                <div class="row g-4">
+
+                <!-- Выбор номера -->
+                <div class="mb-4">
+                    <label class="form-label fw-medium text-dark">{{ form.room.label }}</label>
+                    {% render_field form.room class="form-control form-input" %}
+                    {% if form.room.errors %}
+                        <div class="invalid-feedback d-block">{{ form.room.errors.0 }}</div>
+                    {% endif %}
+                    <small class="text-muted mt-1 d-block">Выберите номер из каталога</small>
+                </div>
+
+                <!-- Даты -->
+                <div class="row g-4 mb-4">
                     <div class="col-md-6">
-                        <label class="form-label fw-medium">{{ form.room_type.label }}</label>
-                        {{ form.room_type }}
+                        <label class="form-label fw-medium text-dark">{{ form.check_in.label }}</label>
+                        {% render_field form.check_in class="form-control form-input" %}
+                        {% if form.check_in.errors %}
+                            <div class="invalid-feedback d-block">{{ form.check_in.errors.0 }}</div>
+                        {% endif %}
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-medium">{{ form.guests.label }}</label>
-                        {{ form.guests }}
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-medium">{{ form.check_in.label }}</label>
-                        {{ form.check_in }}
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-medium">{{ form.check_out.label }}</label>
-                        {{ form.check_out }}
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-medium">{{ form.notes.label }}</label>
-                        {{ form.notes }}
+                        <label class="form-label fw-medium text-dark">{{ form.check_out.label }}</label>
+                        {% render_field form.check_out class="form-control form-input" %}
+                        {% if form.check_out.errors %}
+                            <div class="invalid-feedback d-block">{{ form.check_out.errors.0 }}</div>
+                        {% endif %}
                     </div>
                 </div>
-                
-                <div class="d-grid gap-2 mt-5">
-                    <button type="submit" class="btn btn-custom text-white fs-5 py-3">
-                        <i class="bi bi-check-lg me-2"></i>Создать бронь
+
+                <!-- Количество гостей -->
+                <div class="mb-4">
+                    <label class="form-label fw-medium text-dark">{{ form.guests.label }}</label>
+                    {% render_field form.guests class="form-control form-input" %}
+                    {% if form.guests.errors %}
+                        <div class="invalid-feedback d-block">{{ form.guests.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Примечания -->
+                <div class="mb-5">
+                    <label class="form-label fw-medium text-dark">{{ form.notes.label }}</label>
+                    {% render_field form.notes class="form-control form-input" %}
+                </div>
+
+                <!-- Информация о брони -->
+                <div class="form-card bg-light p-4 mb-5">
+                    <h5 class="fw-bold text-success mb-3">Информация о бронировании</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2"><strong>Стоимость за сутки:</strong> <span id="price-per-day">-</span> ₽</p>
+                            <p class="mb-2"><strong>Количество ночей:</strong> <span id="nights">-</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2"><strong>Общая стоимость:</strong> <span id="total-price" class="h5 text-success">-</span> ₽</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Кнопки -->
+                <div class="d-flex gap-3">
+                    <button type="submit" class="btn btn-custom text-white flex-grow-1 py-3">
+                        Забронировать
                     </button>
-                    <a href="{% url 'booking_list' %}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left me-2"></i>Мои брони
+                    <a href="{% url 'rooms' %}" class="btn btn-outline-secondary py-3">
+                        Вернуться к каталогу
                     </a>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<!-- JavaScript для расчета стоимости -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const roomSelect = document.querySelector('#id_room');
+    const checkInInput = document.querySelector('#id_check_in');
+    const checkOutInput = document.querySelector('#id_check_out');
+    const guestsInput = document.querySelector('#id_guests');
+
+    const pricePerDayEl = document.getElementById('price-per-day');
+    const nightsEl = document.getElementById('nights');
+    const totalPriceEl = document.getElementById('total-price');
+
+    // Кэш цен номеров
+    const roomPrices = {};
+    {% for room in form.room.field.queryset %}
+        roomPrices[{{ room.id }}] = {{ room.price_per_day }};
+    {% endfor %}
+
+    // Функция расчета
+    function calculateTotal() {
+        const roomId = roomSelect.value;
+        const checkIn = new Date(checkInInput.value);
+        const checkOut = new Date(checkOutInput.value);
+
+        if (roomId && checkIn && checkOut && !isNaN(checkIn) && !isNaN(checkOut)) {
+            const pricePerDay = roomPrices[roomId] || 0;
+            const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+
+            pricePerDayEl.textContent = pricePerDay.toLocaleString('ru-RU');
+            nightsEl.textContent = nights;
+            totalPriceEl.textContent = (pricePerDay * nights).toLocaleString('ru-RU');
+        } else {
+            pricePerDayEl.textContent = '-';
+            nightsEl.textContent = '-';
+            totalPriceEl.textContent = '-';
+        }
+    }
+
+    // Слушатели событий
+    roomSelect.addEventListener('change', calculateTotal);
+    checkInInput.addEventListener('change', calculateTotal);
+    checkOutInput.addEventListener('change', calculateTotal);
+
+    // Предзаполнение из URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get('room_id');
+    if (roomId && roomSelect.querySelector(`option[value="${roomId}"]`)) {
+        roomSelect.value = roomId;
+        calculateTotal();
+    }
+});
+</script>
 {% endblock %}

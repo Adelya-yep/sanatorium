@@ -40,25 +40,25 @@
 
             <div class="collapse navbar-collapse" id="navbarMain">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link text-white {% if request.path == '/' %}active{% endif %}"
-                           href="{% url 'home' %}">Главная</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-white {% if 'rooms' in request.path %}active{% endif %}"
-                           href="{% url 'rooms' %}">Номера</a>
-                    </li>
-                    {% if user.is_authenticated %}
-                    <li class="nav-item">
-                        <a class="nav-link text-white {% if 'booking' in request.path %}active{% endif %}"
-                           href="{% url 'booking_list' %}">Мои брони</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-white {% if 'profile' in request.path %}active{% endif %}"
-                           href="{% url 'profile' %}">Профиль</a>
-                    </li>
-                    {% endif %}
-                </ul>
+    <li class="nav-item">
+        <a class="nav-link text-white {% if request.path == '/' %}active{% endif %}"
+           href="{% url 'home' %}">Главная</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link text-white {% if 'rooms' in request.path %}active{% endif %}"
+           href="{% url 'rooms' %}">Номера</a>
+    </li>
+    {% if user.is_authenticated %}
+    <li class="nav-item">
+        <a class="nav-link text-white {% if 'dashboard' in request.path %}active{% endif %}"
+           href="{% url 'dashboard' %}">Кабинет</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link text-white {% if 'booking' in request.path %}active{% endif %}"
+           href="{% url 'booking_list' %}">Мои брони</a>
+    </li>
+    {% endif %}
+</ul>
 
                 <div class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}

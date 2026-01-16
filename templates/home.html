@@ -9,10 +9,10 @@
     <div class="row align-items-center">
         <div class="col-lg-6">
             <h1 class="display-4 fw-bold text-success mb-4">Отдыхайте с комфортом</h1>
-            <p class="lead text-muted mb-4">Санаторий с современными номерами, лечебными процедурами и заботой о вашем здоровье.</p>
+            <p class="lead text-muted mb-4">Санаторий с современными номерами, лечебными процедурами и заботой о вашем здоровье. Идеальное место для восстановления сил.</p>
             <div class="d-flex gap-3">
                 <a href="{% url 'rooms' %}" class="btn btn-custom btn-lg text-white px-5">
-                    Выбрать номер
+                    Смотреть номера
                 </a>
                 {% if not user.is_authenticated %}
                 <a href="{% url 'signup' %}" class="btn btn-outline-success btn-lg px-5">
@@ -22,9 +22,9 @@
             </div>
         </div>
         <div class="col-lg-6">
-            <div class="form-card overflow-hidden">
+            <div class="form-card overflow-hidden p-3">
                 <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-                     class="img-fluid rounded-3" alt="Санаторий">
+                     class="img-fluid rounded-3" alt="Санаторий" style="height: 350px; width: 100%; object-fit: cover;">
             </div>
         </div>
     </div>
@@ -33,29 +33,29 @@
 <!-- Преимущества -->
 <div class="container py-5">
     <div class="text-center mb-5">
-        <h2 class="fw-bold text-success mb-3">Почему выбирают нас</h2>
+        <h2 class="fw-bold text-success mb-3">Почему выбирают наш санаторий</h2>
         <p class="text-muted">Комфорт, здоровье и качественный сервис</p>
     </div>
     <div class="row g-4">
         <div class="col-md-4">
             <div class="form-card p-4 text-center h-100">
-                <i class="bi bi-house-heart text-success fs-1 mb-3"></i>
+                <div class="mb-3 text-success fs-1">🏨</div>
                 <h4 class="fw-bold mb-3">Уютные номера</h4>
-                <p class="text-muted">Стандарт, комфорт и люкс категории с современным ремонтом.</p>
+                <p class="text-muted">Номера категорий Стандарт, Комфорт и Люкс с современным ремонтом, Wi-Fi и всем необходимым.</p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="form-card p-4 text-center h-100">
-                <i class="bi bi-shield-check text-success fs-1 mb-3"></i>
-                <h4 class="fw-bold mb-3">Безопасная оплата</h4>
-                <p class="text-muted">Оплата онлайн или при заезде. Гарантия возврата средств.</p>
+                <div class="mb-3 text-success fs-1">🌿</div>
+                <h4 class="fw-bold mb-3">Лечебные процедуры</h4>
+                <p class="text-muted">Широкий спектр оздоровительных процедур под наблюдением квалифицированных специалистов.</p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="form-card p-4 text-center h-100">
-                <i class="bi bi-chat-heart text-success fs-1 mb-3"></i>
-                <h4 class="fw-bold mb-3">Поддержка 24/7</h4>
-                <p class="text-muted">Круглосуточная служба поддержки гостей.</p>
+                <div class="mb-3 text-success fs-1">🍽️</div>
+                <h4 class="fw-bold mb-3">Питание</h4>
+                <p class="text-muted">Сбалансированное диетическое питание по индивидуальным программам.</p>
             </div>
         </div>
     </div>
@@ -68,25 +68,27 @@
             <h2 class="fw-bold text-success mb-2">Популярные номера</h2>
             <p class="text-muted">Самые востребованные варианты</p>
         </div>
-        <a href="{% url 'rooms' %}" class="btn btn-outline-success">Все номера →</a>
+        <a href="{% url 'rooms' %}" class="btn btn-outline-success">Все номера</a>
     </div>
 
     <div class="row g-4">
-        {% for room in featured_rooms|slice:":3" %}
+        {% for room in rooms|slice:":3" %}
         <div class="col-lg-4 col-md-6">
             <div class="form-card h-100">
                 {% if room.image %}
-                <img src="{{ room.image.url }}" class="card-img-top rounded-top" alt="{{ room.name }}"
-                     style="height: 200px; object-fit: cover;">
+                <img src="{{ room.image.url }}" class="card-img-top" alt="{{ room.name }}"
+                     style="height: 220px; object-fit: cover; border-top-left-radius: 20px; border-top-right-radius: 20px;">
                 {% else %}
-                <div class="bg-light d-flex align-items-center justify-content-center rounded-top"
-                     style="height: 200px;">
-                    <i class="bi bi-house-door text-secondary fs-1"></i>
+                <div class="bg-light d-flex align-items-center justify-content-center"
+                     style="height: 220px; border-top-left-radius: 20px; border-top-right-radius: 20px;">
+                    <div class="text-secondary fs-1">🏠</div>
                 </div>
                 {% endif %}
                 <div class="p-4">
                     <div class="d-flex justify-content-between mb-2">
-                        <span class="badge bg-success bg-opacity-10 text-success">{{ room.get_type_display }}</span>
+                        <span class="badge bg-success bg-opacity-10 text-success py-2 px-3 rounded-pill">
+                            {{ room.get_type_display }}
+                        </span>
                         <span class="text-success fw-bold">{{ room.price_per_day }} ₽/сут</span>
                     </div>
                     <h5 class="fw-bold mb-2">{{ room.name }}</h5>
@@ -96,13 +98,32 @@
             </div>
         </div>
         {% empty %}
-        <div class="col-12 text-center">
-            <p class="text-muted">Нет доступных номеров</p>
+        <div class="col-12">
+            <div class="form-card text-center p-5">
+                <p class="text-muted mb-0">Нет доступных номеров</p>
+            </div>
         </div>
         {% endfor %}
     </div>
 </div>
 
-<!-- Bootstrap Icons -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<!-- Контакты -->
+<div class="container py-5">
+    <div class="form-card p-5">
+        <div class="row">
+            <div class="col-md-6">
+                <h3 class="fw-bold text-success mb-4">Контакты</h3>
+                <p><strong>Адрес:</strong> г. Москва, ул. Санаторная, д. 1</p>
+                <p><strong>Телефон:</strong> +7 (495) 123-45-67</p>
+                <p><strong>Email:</strong> info@sanatorium.ru</p>
+                <p><strong>Режим работы:</strong> Круглосуточно</p>
+            </div>
+            <div class="col-md-6">
+                <h3 class="fw-bold text-success mb-4">Как добраться</h3>
+                <p class="text-muted">Санаторий расположен в экологически чистом районе, в 15 км от центра города.</p>
+                <p class="text-muted">Бесплатный трансфер от станции метро "Лесная".</p>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

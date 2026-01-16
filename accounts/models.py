@@ -14,60 +14,7 @@ class GuestProfile(models.Model):
         return f"{self.first_name} {self.last_name}"
 
 
-class Booking(models.Model):
-    ROOM_TYPES = [
-        ('standard_single', 'Стандартный одноместный'),
-        ('standard_double', 'Стандартный двухместный'),
-        ('lux_single', 'Люкс одноместный'),
-        ('lux_double', 'Люкс двухместный'),
-    ]
-    STATUS_CHOICES = [
-        ('pending', 'Ожидает подтверждения'),
-        ('confirmed', 'Подтверждена'),
-        ('cancelled', 'Отменена'),
-        ('completed', 'Завершена'),
-    ]
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookings')
-    room_type = models.CharField(max_length=20, choices=ROOM_TYPES)
-    check_in = models.DateField('Дата заезда')
-    check_out = models.DateField('Дата выезда')
-    guests = models.IntegerField(  # ← ИСПРАВЛЕНО
-        default=1,
-        validators=[MinValueValidator(1), MaxValueValidator(4)]
-    )
-    total_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    created_at = models.DateTimeField(auto_now_add=True)
-    notes = models.TextField(max_length=500, blank=True)
-
-    class Meta:
-        verbose_name = 'Бронирование'
-        verbose_name_plural = 'Бронирования'
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.user.username}: {self.get_room_type_display()}"
-
-    @property
-    def days(self):
-        return (self.check_out - self.check_in).days
-
-    def get_price_per_day(self):
-        prices = {
-            'standard_single': 5000,
-            'standard_double': 8000,
-            'lux_single': 12000,
-            'lux_double': 18000,
-        }
-        return prices.get(self.room_type, 0)
-
-    def save(self, *args, **kwargs):
-        self.total_price = self.get_price_per_day() * self.days
-        super().save(*args, **kwargs)
-
-
-class Room(models.Model):
+class Room(models.Model):  # ПЕРЕМЕЩАЕМ Room ПЕРЕД Booking!
     """
     Номер санатория для каталога и бронирования.
     """
@@ -97,3 +44,55 @@ class Room(models.Model):
     def price_range(self):
         """Диапазон цен за номер."""
         return f"{self.price_per_day} ₽/сутки"
+
+
+class Booking(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Ожидает подтверждения'),
+        ('confirmed', 'Подтверждена'),
+        ('cancelled', 'Отменена'),
+        ('completed', 'Завершена'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookings')
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='bookings', null=True, blank=True)
+    room_type = models.CharField(max_length=20, choices=Room.TYPE_CHOICES)  # Оставляем для обратной совместимости
+    check_in = models.DateField('Дата заезда')
+    check_out = models.DateField('Дата выезда')
+    guests = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(4)]
+    )
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(max_length=500, blank=True)
+
+    class Meta:
+        verbose_name = 'Бронирование'
+        verbose_name_plural = 'Бронирования'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        if self.room:
+            return f"{self.user.username}: {self.room.name}"
+        return f"{self.user.username}: {self.get_room_type_display()}"
+
+    @property
+    def days(self):
+        return (self.check_out - self.check_in).days
+
+    def get_price_per_day(self):
+        if self.room:
+            return self.room.price_per_day
+        # Запасной вариант для старых броней
+        prices = {
+            'standard': 5000,
+            'comfort': 8000,
+            'lux': 12000,
+        }
+        return prices.get(self.room_type, 0)
+
+    def save(self, *args, **kwargs):
+        self.total_price = self.get_price_per_day() * self.days
+        super().save(*args, **kwargs)

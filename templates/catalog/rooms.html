@@ -88,17 +88,18 @@
                                 <span class="h3 fw-bold text-success">{{ room.price_per_day }} ₽</span>
                                 <small class="text-muted d-block">за сутки</small>
                             </div>
-                            {% if user.is_authenticated %}
-                            <a href="{% url 'booking_create' %}?room_type={{ room.type }}" 
-                               class="btn btn-custom text-white px-4">
-                                Забронировать
-                            </a>
-                            {% else %}
-                            <a href="{% url 'login' %}?next={% url 'rooms' %}" 
-                               class="btn btn-outline-success px-4">
-                                Войдите для брони
-                            </a>
-                            {% endif %}
+                            <!-- В карточке номера замените кнопку на: -->
+{% if user.is_authenticated %}
+<a href="{% url 'booking_create' %}?room_id={{ room.id }}"
+   class="btn btn-custom text-white px-4">
+    Забронировать
+</a>
+{% else %}
+<a href="{% url 'login' %}?next={% url 'rooms' %}"
+   class="btn btn-outline-success px-4">
+    Войдите для брони
+</a>
+{% endif %}
                         </div>
                     </div>
                 </div>
