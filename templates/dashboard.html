@@ -7,28 +7,30 @@
     </h1>
     <div class="col-lg-{% if user.is_superuser %}12{% else %}10{% endif %}">
         <div class="row g-4">
-            <!-- Бронирование (всегда) -->
-            <div class="col-md-6 col-lg-3">
-                <div class="form-card p-4 text-center h-100">
-                    <div class="mb-3 text-success fs-1">🏨</div>
-                    <h3 class="text-success mb-2">Бронирование</h3>
-                    <p class="text-muted small mb-3">Выберите номер и даты</p>
-                    <a href="{% url 'booking' %}" class="btn btn-custom w-100 text-white">Перейти</a>
-                </div>
-            </div>
-            <!-- Процедуры (всегда) -->
-            <div class="col-md-6 col-lg-3">
-                <div class="form-card p-4 text-center h-100">
-                    <div class="mb-3 text-success fs-1">🩺</div>
-                    <h3 class="text-success mb-2">Процедуры</h3>
-                    <p class="text-muted small mb-3">Запишитесь к терапевту</p>
-                    <a href="{% url 'procedures' %}" class="btn btn-custom w-100 text-white">Перейти</a>
-                </div>
-            </div>
+            <!-- Бронирование -->
+<div class="col-md-6 col-lg-3">
+    <div class="form-card p-4 text-center h-100">
+        <i class="bi bi-calendar-check text-success mb-3 fs-1"></i>
+        <h3 class="text-success mb-2">Бронирование</h3>
+        <p class="text-muted small mb-3">Новое бронирование номера</p>
+        <a href="{% url 'booking_create' %}" class="btn btn-custom w-100 text-white">Перейти</a>
+    </div>
+</div>
+
+<!-- Процедуры (пока заглушка) -->
+<div class="col-md-6 col-lg-3">
+    <div class="form-card p-4 text-center h-100">
+        <i class="bi bi-heart-pulse text-success mb-3 fs-1"></i>
+        <h3 class="text-success mb-2">Процедуры</h3>
+        <p class="text-muted small mb-3">Запись к терапевту</p>
+        <a href="#" class="btn btn-outline-secondary w-100 disabled" title="Скоро">В разработке</a>
+    </div>
+</div>
+
             <!-- Профиль (всегда) -->
             <div class="col-md-6 col-lg-3">
                 <div class="form-card p-4 text-center h-100">
-                    <div class="mb-3 text-success fs-1">👤</div>
+                    <i class="bi bi-person-circle text-success mb-3 fs-1"></i>
                     <h3 class="text-success mb-2">Профиль</h3>
                     <p class="text-muted small mb-3">Личные данные</p>
                     <a href="{% url 'profile' %}" class="btn btn-custom w-100 text-white">Перейти</a>
@@ -37,7 +39,7 @@
             <!-- Выход (всегда) -->
             <div class="col-md-6 col-lg-3">
                 <div class="form-card p-4 text-center h-100 border-warning">
-                    <div class="mb-3 text-warning fs-1">🚪</div>
+                    <i class="bi bi-box-arrow-right text-warning mb-3 fs-1"></i>
                     <h3 class="text-warning mb-2">Выход</h3>
                     <p class="text-muted small mb-3">{{ user.username }}</p>
                     <form method="post" action="{% url 'logout' %}">

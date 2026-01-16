@@ -1,36 +1,77 @@
 {% extends 'base.html' %}
+{% load widget_tweaks %}
+
 {% block title %}Регистрация{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow">
-            <div class="card-header bg-success text-white text-center">
-                <h3>Регистрация</h3>
+<div class="row justify-content-center py-5">
+    <div class="col-md-8 col-lg-6">
+        <div class="form-card p-5 mx-auto">
+            <div class="text-center mb-5">
+                <i class="bi bi-person-plus text-success fs-1 mb-3"></i>
+                <h1 class="h2 fw-bold text-success mb-3">Регистрация гостя</h1>
+                <p class="text-muted lead">Заполните данные для бронирования</p>
             </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label class="form-label">{{ form.username.label }}</label>
-                        <input type="text" class="form-control" name="{{ form.username.name }}" required>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <!-- Ошибки формы -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger rounded-3 mb-4">
+                        {{ form.non_field_errors }}
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">{{ form.password1.label }}</label>
-                        <input type="password" class="form-control" name="{{ form.password1.name }}" required>
+                {% endif %}
+
+                <!-- Поля в 2 колонки -->
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-medium text-dark">{{ form.first_name.label }}</label>
+                        {% render_field form.first_name class="form-control form-input" placeholder="Иван" %}
+                        {% if form.first_name.errors %}
+                            <div class="invalid-feedback d-block">{{ form.first_name.errors.0 }}</div>
+                        {% endif %}
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">{{ form.password2.label }}</label>
-                        <input type="password" class="form-control" name="{{ form.password2.name }}" required>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-medium text-dark">{{ form.last_name.label }}</label>
+                        {% render_field form.last_name class="form-control form-input" placeholder="Иванов" %}
                     </div>
-                    {% if form.errors %}
-                        <div class="alert alert-danger">{{ form.errors }}</div>
-                    {% endif %}
-                    <button type="submit" class="btn btn-success w-100">Зарегистрироваться</button>
-                </form>
-                <div class="text-center mt-3">
-                    <a href="{% url 'login' %}">Уже есть аккаунт? Войти</a>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-medium text-dark">{{ form.username.label }}</label>
+                        {% render_field form.username class="form-control form-input" placeholder="ivanov123" %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-medium text-dark">{{ form.email.label }} <span class="text-danger">*</span></label>
+                        {% render_field form.email class="form-control form-input" placeholder="ivanov@mail.ru" %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-medium text-dark">{{ form.phone.label }}</label>
+                        {% render_field form.phone class="form-control form-input" placeholder="+7 (999) 123-45-67" %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-medium text-dark">{{ form.password1.label }}</label>
+                        {% render_field form.password1 class="form-control form-input" %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-medium text-dark">{{ form.password2.label }}</label>
+                        {% render_field form.password2 class="form-control form-input" %}
+                    </div>
                 </div>
-            </div>
+
+                <div class="d-grid gap-3 mt-5">
+                    <button type="submit" class="btn btn-custom text-white fs-5 py-3">
+                        <i class="bi bi-check-circle me-2"></i>Зарегистрироваться
+                    </button>
+                    <a href="{% url 'login' %}" class="btn btn-outline-secondary">
+                        Уже есть аккаунт? Войти
+                    </a>
+                </div>
+            </form>
         </div>
     </div>
 </div>

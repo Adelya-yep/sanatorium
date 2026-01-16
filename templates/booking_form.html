@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Новое бронирование{% endblock %}
+{% block content %}
+<div class="row justify-content-center py-5">
+    <div class="col-md-10 col-lg-8">
+        <div class="form-card p-5">
+            <div class="text-center mb-5">
+                <i class="bi bi-calendar-check text-success fs-1 mb-3"></i>
+                <h1 class="h2 fw-bold text-success mb-3">Новое бронирование</h1>
+            </div>
+            
+            <form method="post">
+                {% csrf_token %}
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-medium">{{ form.room_type.label }}</label>
+                        {{ form.room_type }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-medium">{{ form.guests.label }}</label>
+                        {{ form.guests }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-medium">{{ form.check_in.label }}</label>
+                        {{ form.check_in }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-medium">{{ form.check_out.label }}</label>
+                        {{ form.check_out }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-medium">{{ form.notes.label }}</label>
+                        {{ form.notes }}
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 mt-5">
+                    <button type="submit" class="btn btn-custom text-white fs-5 py-3">
+                        <i class="bi bi-check-lg me-2"></i>Создать бронь
+                    </button>
+                    <a href="{% url 'booking_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Мои брони
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
