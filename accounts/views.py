@@ -142,6 +142,13 @@ class BookingCreateView(LoginRequiredMixin, CreateView):
     def get_success_url(self):
         return reverse_lazy('booking_list')
 
+    def form_valid(self, form):
+        # Убедимся, что бронь создается для текущего пользователя
+        booking = form.save(commit=False)
+        if booking.user != self.request.user:
+            booking.user = self.request.user
+        return super().form_valid(form)
+
 
 class BookingListView(LoginRequiredMixin, ListView):
     model = Booking
@@ -153,6 +160,10 @@ class BookingListView(LoginRequiredMixin, ListView):
         return Booking.objects.filter(
             user=self.request.user
         ).select_related('user').order_by('-created_at')
+
+    def get_queryset(self):
+        # Хорошо - фильтрует только брони текущего пользователя
+        return Booking.objects.filter(user=self.request.user).select_related('room').order_by('-created_at')
 
 
 # ПРОСМОТР ПРОФИЛЯ

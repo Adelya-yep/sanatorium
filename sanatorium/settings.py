@@ -118,11 +118,26 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = 'static/'
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Настройки безопасности
+LOGIN_URL = '/accounts/login/'  # Куда перенаправлять неавторизованных
+LOGIN_REDIRECT_URL = '/accounts/dashboard/'  # Куда перенаправлять после входа
+LOGOUT_REDIRECT_URL = '/'  # Куда перенаправлять после выхода
+
+# Защита от кликджекинга
+X_FRAME_OPTIONS = 'DENY'
+
+# Защита от XSS
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True  # Перенаправление на HTTPS
+    SESSION_COOKIE_SECURE = True  # Куки только по HTTPS
+    CSRF_COOKIE_SECURE = True  # CSRF куки только по HTTPS
