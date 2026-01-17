@@ -7,14 +7,25 @@ from datetime import date
 
 
 class GuestRegistrationForm(UserCreationForm):
-    email = forms.EmailField(required=True)
-    first_name = forms.CharField(max_length=30, required=True)
-    last_name = forms.CharField(max_length=30, required=True)
-    phone = forms.CharField(max_length=20, required=True)
+    email = forms.EmailField(required=True, label='Email')
+    first_name = forms.CharField(max_length=30, required=True, label='Имя')
+    last_name = forms.CharField(max_length=30, required=True, label='Фамилия')
+    middle_name = forms.CharField(max_length=30, required=False, label='Отчество')
+    phone = forms.CharField(max_length=20, required=True, label='Телефон')
+    birth_date = forms.DateField(
+        required=True,
+        label='Дата рождения',
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        help_text='Формат: ДД.ММ.ГГГГ'
+    )
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'phone', 'password1', 'password2']
+        fields = ['username', 'email', 'first_name', 'last_name', 'middle_name',
+                  'phone', 'birth_date', 'password1', 'password2']
+        labels = {
+            'username': 'Логин',
+        }
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -28,10 +39,75 @@ class GuestRegistrationForm(UserCreationForm):
                 user=user,
                 first_name=self.cleaned_data['first_name'],
                 last_name=self.cleaned_data['last_name'],
-                phone=self.cleaned_data['phone']
+                middle_name=self.cleaned_data.get('middle_name', ''),
+                phone=self.cleaned_data['phone'],
+                birth_date=self.cleaned_data['birth_date'],
+                email=self.cleaned_data['email']
             )
         return user
 
+
+class GuestProfileForm(forms.ModelForm):
+    class Meta:
+        model = GuestProfile
+        exclude = ['user', 'created_at', 'updated_at', 'is_profile_complete']
+        widgets = {
+            'birth_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'passport_issue_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'address': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'chronic_diseases': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'allergies': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'drug_intolerance': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'contraindications': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'special_requests': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'passport_issued_by': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+        }
+        labels = {
+            'middle_name': 'Отчество',
+            'birth_date': 'Дата рождения',
+            'gender': 'Пол',
+            'phone': 'Телефон',
+            'email': 'Email',
+            'address': 'Адрес проживания',
+            'passport_series': 'Серия паспорта',
+            'passport_number': 'Номер паспорта',
+            'passport_issued_by': 'Кем выдан',
+            'passport_issue_date': 'Дата выдачи',
+            'snils': 'СНИЛС',
+            'oms_policy': 'Полис ОМС',
+            'medical_book_number': 'Номер медицинской книжки',
+            'blood_type': 'Группа крови',
+            'chronic_diseases': 'Хронические заболевания',
+            'allergies': 'Аллергии',
+            'drug_intolerance': 'Лекарственная непереносимость',
+            'contraindications': 'Противопоказания к процедурам',
+            'preferred_diet': 'Предпочитаемое питание',
+            'special_requests': 'Особые пожелания',
+            'need_transfer': 'Нужен трансфер',
+            'emergency_contact': 'Контакт для экстренной связи',
+            'emergency_phone': 'Телефон экстренной связи',
+        }
+        help_texts = {
+            'snils': 'Формат: XXX-XXX-XXX XX',
+            'oms_policy': '16 цифр',
+        }
+
+    def clean_snils(self):
+        snils = self.cleaned_data.get('snils', '')
+        if snils:
+            # Простая валидация СНИЛС
+            snils = re.sub(r'\D', '', snils)
+            if len(snils) != 11:
+                raise forms.ValidationError('СНИЛС должен содержать 11 цифр')
+        return snils
+
+    def clean_oms_policy(self):
+        oms = self.cleaned_data.get('oms_policy', '')
+        if oms:
+            oms = re.sub(r'\D', '', oms)
+            if len(oms) != 16:
+                raise forms.ValidationError('Полис ОМС должен содержать 16 цифр')
+        return oms
 
 class BookingForm(forms.ModelForm):
     room = forms.ModelChoiceField(

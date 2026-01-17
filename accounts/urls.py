@@ -1,16 +1,17 @@
 from django.urls import path
+from django.contrib.auth import views as auth_views
 from . import views
 from .views import (
     SignUpView, DashboardView, ProfileView, ProceduresView,
-    BookingCreateView, BookingListView, RoomListView
+    BookingCreateView, BookingListView, RoomListView,
+    ProfileUpdateView
 )
-from django.contrib.auth import views as auth_views
 
 urlpatterns = [
-    # Главная страница (публичная) - вызываем функцию home
+    # Главная страница
     path('', views.home, name='home'),
 
-    # Личный кабинет (только для авторизованных)
+    # Личный кабинет
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
 
     # Аутентификация
@@ -25,7 +26,10 @@ urlpatterns = [
     path('booking/create/', BookingCreateView.as_view(), name='booking_create'),
     path('booking/list/', BookingListView.as_view(), name='booking_list'),
 
-    # Профиль и процедуры
-    path('profile/', ProfileView.as_view(), name='profile'),
+    # Профиль (обновленные пути)
+    path('profile/', ProfileView.as_view(), name='profile'),  # Просмотр
+    path('profile/edit/', ProfileUpdateView.as_view(), name='profile_edit'),  # Редактирование
+
+    # Процедуры
     path('procedures/', ProceduresView.as_view(), name='procedures'),
 ]

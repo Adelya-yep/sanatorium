@@ -1,18 +1,20 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
-from django.views.generic import CreateView, TemplateView, ListView
+from django.views.generic import CreateView, TemplateView, ListView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.http import HttpResponseRedirect
+from django.db.models import Count, Sum
 
-# Импорт из datetime
-from datetime import date
+# Импорт из datetime - ДОБАВЬТЕ timedelta
+from datetime import date, timedelta
 
 # Импорт из других модулей проекта
-from .forms import GuestRegistrationForm, BookingForm
-from .models import Booking, Room
+from .forms import GuestRegistrationForm, BookingForm, GuestProfileForm
+from .models import Booking, Room, GuestProfile
 
 
 # ГЛАВНАЯ СТРАНИЦА (публичная)
@@ -22,7 +24,7 @@ def home(request):
     return render(request, 'home.html', {'rooms': rooms})
 
 
-# ЛИЧНЫЙ КАБИНЕТ (только для авторизованных)
+# ЛИЧНЫЙ КАБИНЕТ - обновленная версия
 @method_decorator(login_required, name='dispatch')
 class DashboardView(TemplateView):
     template_name = 'dashboard.html'
@@ -31,21 +33,43 @@ class DashboardView(TemplateView):
         context = super().get_context_data(**kwargs)
         user = self.request.user
 
-        # Активные брони (статус confirmed или pending)
+        # Получаем или создаем профиль
+        profile, created = GuestProfile.objects.get_or_create(user=user)
+
+        # Активные брони
         active_bookings = Booking.objects.filter(
             user=user,
             status__in=['confirmed', 'pending'],
             check_out__gte=date.today()
-        ).order_by('check_in')[:5]
+        ).select_related('room').order_by('check_in')[:5]
 
-        # Последние бронирования
-        recent_bookings = Booking.objects.filter(
-            user=user
-        ).order_by('-created_at')[:10]
+        # Предстоящие брони (ближайшие 30 дней)
+        upcoming_bookings = Booking.objects.filter(
+            user=user,
+            status='confirmed',
+            check_in__gte=date.today(),
+            check_in__lte=date.today() + timedelta(days=30)
+        ).select_related('room').order_by('check_in')[:3]
+
+        # Статистика
+        total_bookings = Booking.objects.filter(user=user).count()
+        completed_bookings = Booking.objects.filter(user=user, status='completed').count()
+        total_spent = Booking.objects.filter(
+            user=user,
+            status='completed'
+        ).aggregate(total=Sum('total_price'))['total'] or 0
+
+        # Процент заполнения профиля
+        profile_completion = profile.calculate_profile_completion()
 
         context.update({
+            'profile': profile,
             'active_bookings': active_bookings,
-            'recent_bookings': recent_bookings,
+            'upcoming_bookings': upcoming_bookings,
+            'total_bookings': total_bookings,
+            'completed_bookings': completed_bookings,
+            'total_spent': total_spent,
+            'profile_completion': profile_completion,
         })
         return context
 
@@ -131,16 +155,45 @@ class BookingListView(LoginRequiredMixin, ListView):
         ).select_related('user').order_by('-created_at')
 
 
-# ПРОФИЛЬ И ПРОЦЕДУРЫ
+# ПРОСМОТР ПРОФИЛЯ
 @method_decorator(login_required, name='dispatch')
 class ProfileView(TemplateView):
     template_name = 'profile.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Здесь можно добавить данные профиля
+        user = self.request.user
+
+        profile = get_object_or_404(GuestProfile, user=user)
+        profile_completion = profile.calculate_profile_completion()
+
+        context.update({
+            'profile': profile,
+            'profile_completion': profile_completion,
+        })
         return context
 
+
+# РЕДАКТИРОВАНИЕ ПРОФИЛЯ
+@method_decorator(login_required, name='dispatch')
+class ProfileUpdateView(UpdateView):
+    model = GuestProfile
+    form_class = GuestProfileForm
+    template_name = 'profile_edit.html'
+
+    def get_object(self):
+        return get_object_or_404(GuestProfile, user=self.request.user)
+
+    def get_success_url(self):
+        messages.success(self.request, 'Профиль успешно обновлен!')
+        return reverse_lazy('dashboard')
+
+    def form_valid(self, form):
+        # Пересчитываем процент заполнения
+        profile = form.save(commit=False)
+        profile.calculate_profile_completion()
+        profile.save()
+        return super().form_valid(form)
 
 @method_decorator(login_required, name='dispatch')
 class ProceduresView(TemplateView):

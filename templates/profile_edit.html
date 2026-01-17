@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+
+{% block title %}Редактирование профиля{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Заголовок -->
+    <div class="mb-5">
+        <h1 class="fw-bold text-success mb-3">Редактирование профиля</h1>
+        <p class="text-muted">Заполните медицинские и личные данные</p>
+    </div>
+
+    <!-- Форма -->
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="form-card p-5">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <!-- Ошибки формы -->
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger rounded-3 mb-4">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+
+                    <!-- Вкладки -->
+                    <ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#personal" type="button" role="tab">
+                                Личные данные
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="medical-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#medical" type="button" role="tab">
+                                Медицинская информация
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="additional-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#additional" type="button" role="tab">
+                                Дополнительно
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Содержимое вкладок -->
+                    <div class="tab-content" id="profileTabsContent">
+                        
+                        <!-- Личные данные -->
+                        <div class="tab-pane fade show active" id="personal" role="tabpanel">
+                            <h5 class="fw-bold text-dark mb-4">Основная информация</h5>
+                            
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-medium">{{ form.first_name.label }}*</label>
+                                    {{ form.first_name }}
+                                    {% if form.first_name.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.first_name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label class="form-label fw-medium">{{ form.last_name.label }}*</label>
+                                    {{ form.last_name }}
+                                    {% if form.last_name.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.last_name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label class="form-label fw-medium">{{ form.middle_name.label }}</label>
+                                    {{ form.middle_name }}
+                                </div>
+                            </div>
+                            
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-medium">{{ form.birth_date.label }}*</label>
+                                    {{ form.birth_date }}
+                                    {% if form.birth_date.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.birth_date.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label class="form-label fw-medium">{{ form.gender.label }}</label>
+                                    {{ form.gender }}
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label class="form-label fw-medium">{{ form.blood_type.label }}</label>
+                                    {{ form.blood_type }}
+                                </div>
+                            </div>
+                            
+                            <h5 class="fw-bold text-dark mb-4 mt-5">Контактная информация</h5>
+                            
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-medium">{{ form.phone.label }}*</label>
+                                    {{ form.phone }}
+                                    {% if form.phone.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.phone.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label fw-medium">{{ form.email.label }}</label>
+                                    {{ form.email }}
+                                    {% if form.email.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.email.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-medium">{{ form.address.label }}</label>
+                                {{ form.address }}
+                            </div>
+                        </div>
+
+                        <!-- Медицинская информация -->
+                        <div class="tab-pane fade" id="medical" role="tabpanel">
+                            <h5 class="fw-bold text-dark mb-4">Медицинские документы</h5>
+                            
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-medium">{{ form.snils.label }}</label>
+                                    {{ form.snils }}
+                                    {% if form.snils.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.snils.errors.0 }}</div>
+                                    {% endif %}
+                                    <small class="text-muted">{{ form.snils.help_text }}</small>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label class="form-label fw-medium">{{ form.oms_policy.label }}</label>
+                                    {{ form.oms_policy }}
+                                    {% if form.oms_policy.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.oms_policy.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label class="form-label fw-medium">{{ form.medical_book_number.label }}</label>
+                                    {{ form.medical_book_number }}
+                                </div>
+                            </div>
+                            
+                            <h5 class="fw-bold text-dark mb-4 mt-5">Паспортные данные</h5>
+                            
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-3">
+                                    <label class="form-label fw-medium">{{ form.passport_series.label }}</label>
+                                    {{ form.passport_series }}
+                                </div>
+                                
+                                <div class="col-md-3">
+                                    <label class="form-label fw-medium">{{ form.passport_number.label }}</label>
+                                    {{ form.passport_number }}
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label fw-medium">{{ form.passport_issue_date.label }}</label>
+                                    {{ form.passport_issue_date }}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-medium">{{ form.passport_issued_by.label }}</label>
+                                {{ form.passport_issued_by }}
+                            </div>
+                            
+                            <h5 class="fw-bold text-dark mb-4 mt-5">Медицинская история</h5>
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-medium">{{ form.chronic_diseases.label }}</label>
+                                {{ form.chronic_diseases }}
+                                <small class="text-muted">Укажите хронические заболевания, если есть</small>
+                            </div>
+                            
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-medium">{{ form.allergies.label }}</label>
+                                    {{ form.allergies }}
+                                    <small class="text-muted">Аллергические реакции на лекарства, пищу и др.</small>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label fw-medium">{{ form.drug_intolerance.label }}</label>
+                                    {{ form.drug_intolerance }}
+                                    <small class="text-muted">Лекарства, которые вам противопоказаны</small>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-medium">{{ form.contraindications.label }}</label>
+                                {{ form.contraindications }}
+                                <small class="text-muted">Противопоказания к санаторным процедурам</small>
+                            </div>
+                        </div>
+
+                        <!-- Дополнительная информация -->
+                        <div class="tab-pane fade" id="additional" role="tabpanel">
+                            <h5 class="fw-bold text-dark mb-4">Данные для пребывания</h5>
+                            
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-medium">{{ form.preferred_diet.label }}</label>
+                                    {{ form.preferred_diet }}
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label fw-medium">{{ form.need_transfer.label }}</label>
+                                    <div class="form-check form-switch mt-2">
+                                        {{ form.need_transfer }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-medium">{{ form.special_requests.label }}</label>
+                                {{ form.special_requests }}
+                                <small class="text-muted">Особые пожелания к номеру, питанию или процедурам</small>
+                            </div>
+                            
+                            <h5 class="fw-bold text-dark mb-4 mt-5">Экстренные контакты</h5>
+                            
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-medium">{{ form.emergency_contact.label }}</label>
+                                    {{ form.emergency_contact }}
+                                    <small class="text-muted">ФИО контактного лица</small>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label fw-medium">{{ form.emergency_phone.label }}</label>
+                                    {{ form.emergency_phone }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Кнопки -->
+                    <div class="d-flex justify-content-between mt-5 pt-4 border-top">
+                        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary px-4">
+                            Отмена
+                        </a>
+                        <button type="submit" class="btn btn-custom text-white px-5">
+                            Сохранить изменения
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Стили для улучшения внешнего вида форм -->
+<style>
+.form-control, .form-select {
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 12px 16px;
+    transition: all 0.3s;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #17a2b8;
+    box-shadow: 0 0 0 0.2rem rgba(23,162,184,0.25);
+}
+
+.nav-tabs .nav-link {
+    border: 2px solid transparent;
+    border-radius: 12px 12px 0 0;
+    padding: 12px 24px;
+    font-weight: 500;
+    margin-right: 5px;
+}
+
+.nav-tabs .nav-link.active {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    color: white;
+    border-color: #28a745;
+}
+
+.tab-content {
+    padding: 20px;
+}
+
+.form-check-input:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.form-check-input:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40,167,69,0.25);
+}
+</style>
+
+<!-- JavaScript для активации вкладок -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Активация вкладок Bootstrap
+    var tabEl = document.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabEl.forEach(function(tab) {
+        tab.addEventListener('click', function(event) {
+            event.preventDefault();
+            var tabTrigger = new bootstrap.Tab(this);
+            tabTrigger.show();
+        });
+    });
+    
+    // Подсказка для обязательных полей
+    var requiredFields = document.querySelectorAll('input[required], select[required], textarea[required]');
+    requiredFields.forEach(function(field) {
+        var label = field.closest('.col-md-4, .col-md-6')?.querySelector('.form-label');
+        if (label) {
+            if (!label.innerHTML.includes('*')) {
+                label.innerHTML += ' <span class="text-danger">*</span>';
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

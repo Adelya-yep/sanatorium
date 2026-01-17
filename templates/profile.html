@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+
+{% block title %}Мой профиль{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Заголовок -->
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h1 class="fw-bold text-success mb-2">Мой профиль</h1>
+            <p class="text-muted">Личные и медицинские данные</p>
+        </div>
+        <a href="{% url 'profile_edit' %}" class="btn btn-custom text-white">
+            Редактировать профиль
+        </a>
+    </div>
+
+    <!-- Прогресс заполнения -->
+    <div class="form-card p-4 mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-dark mb-0">Заполнение профиля</h5>
+            <span class="badge bg-{% if profile_completion >= 70 %}success{% else %}warning{% endif %}">
+                {{ profile_completion|floatformat:0 }}%
+            </span>
+        </div>
+        <div class="progress" style="height: 10px;">
+            <div class="progress-bar bg-success" role="progressbar" 
+                 style="width: {{ profile_completion }}%"
+                 aria-valuenow="{{ profile_completion }}" 
+                 aria-valuemin="0" 
+                 aria-valuemax="100">
+            </div>
+        </div>
+        <small class="text-muted mt-2 d-block">
+            {% if profile_completion < 70 %}
+            Заполните профиль до 70% для быстрого оформления брони
+            {% else %}
+            Профиль заполнен достаточно для бронирования
+            {% endif %}
+        </small>
+    </div>
+
+    <div class="row g-4">
+        <!-- Личные данные -->
+        <div class="col-lg-6">
+            <div class="form-card p-4 h-100">
+                <h4 class="fw-bold text-success mb-4">
+                    <i class="bi bi-person me-2"></i>Личные данные
+                </h4>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>ФИО:</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>{{ profile.full_name }}</p>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Дата рождения:</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>{{ profile.birth_date|date:"d.m.Y" }} ({{ profile.age }} лет)</p>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Пол:</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>{{ profile.get_gender_display }}</p>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Телефон:</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>{{ profile.phone }}</p>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Email:</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>{{ profile.email }}</p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Адрес:</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>{{ profile.address|default:"Не указан"|linebreaksbr }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Паспортные данные -->
+        <div class="col-lg-6">
+            <div class="form-card p-4 h-100">
+                <h4 class="fw-bold text-success mb-4">
+                    <i class="bi bi-passport me-2"></i>Паспортные данные
+                </h4>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Паспорт:</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>{{ profile.passport_series }} {{ profile.passport_number }}</p>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Кем выдан:</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>{{ profile.passport_issued_by|default:"Не указано"|linebreaksbr }}</p>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Дата выдачи:</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>{{ profile.passport_issue_date|date:"d.m.Y"|default:"Не указана" }}</p>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>СНИЛС:</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>{{ profile.snils|default:"Не указан" }}</p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Полис ОМС:</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>{{ profile.oms_policy|default:"Не указан" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Медицинская информация -->
+        <div class="col-12">
+            <div class="form-card p-4">
+                <h4 class="fw-bold text-success mb-4">
+                    <i class="bi bi-heart-pulse me-2"></i>Медицинская информация
+                </h4>
+                
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <p class="mb-2"><strong>Группа крови:</strong></p>
+                        <p>{{ profile.get_blood_type_display|default:"Не указана" }}</p>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <p class="mb-2"><strong>Мед. книжка:</strong></p>
+                        <p>{{ profile.medical_book_number|default:"Не указана" }}</p>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <p class="mb-2"><strong>Питание:</strong></p>
+                        <p>{{ profile.get_preferred_diet_display }}</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Хронические заболевания:</strong></p>
+                        <p>{{ profile.chronic_diseases|default:"Не указаны"|linebreaksbr }}</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Аллергии:</strong></p>
+                        <p>{{ profile.allergies|default:"Не указаны"|linebreaksbr }}</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Лекарственная непереносимость:</strong></p>
+                        <p>{{ profile.drug_intolerance|default:"Не указана"|linebreaksbr }}</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Противопоказания:</strong></p>
+                        <p>{{ profile.contraindications|default:"Не указаны"|linebreaksbr }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Дополнительная информация -->
+        <div class="col-12">
+            <div class="form-card p-4">
+                <h4 class="fw-bold text-success mb-4">
+                    <i class="bi bi-info-circle me-2"></i>Дополнительная информация
+                </h4>
+                
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Особые пожелания:</strong></p>
+                        <p>{{ profile.special_requests|default:"Нет"|linebreaksbr }}</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Трансфер:</strong></p>
+                        <p>{{ profile.need_transfer|yesno:"Нужен,Не нужен" }}</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Экстренный контакт:</strong></p>
+                        <p>{{ profile.emergency_contact|default:"Не указан" }}</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Телефон экстренной связи:</strong></p>
+                        <p>{{ profile.emergency_phone|default:"Не указан" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
