@@ -1,11 +1,10 @@
 {% extends 'base.html' %}
-{% load widget_tweaks %}
 
 {% block title %}Бронирование номера{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-lg-8">
+    <div class="col-lg-10">
         <div class="form-card p-5">
             <div class="text-center mb-5">
                 <h1 class="fw-bold text-success mb-3">Бронирование номера</h1>
@@ -25,35 +24,60 @@
                 <!-- Выбор номера -->
                 <div class="mb-4">
                     <label class="form-label fw-medium text-dark">{{ form.room.label }}</label>
-                    {% render_field form.room class="form-control form-input" %}
+                    {{ form.room }}
                     {% if form.room.errors %}
                         <div class="invalid-feedback d-block">{{ form.room.errors.0 }}</div>
                     {% endif %}
                     <small class="text-muted mt-1 d-block">Выберите номер из каталога</small>
                 </div>
 
-                <!-- Даты -->
-                <div class="row g-4 mb-4">
-                    <div class="col-md-6">
-                        <label class="form-label fw-medium text-dark">{{ form.check_in.label }}</label>
-                        {% render_field form.check_in class="form-control form-input" %}
-                        {% if form.check_in.errors %}
-                            <div class="invalid-feedback d-block">{{ form.check_in.errors.0 }}</div>
-                        {% endif %}
+                <!-- Календарь с занятыми датами -->
+                <div class="form-card p-4 mb-4 bg-light">
+                    <h6 class="fw-bold text-success mb-3">🗓️ Выберите даты (красным отмечены занятые даты)</h6>
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-medium">{{ form.check_in.label }}</label>
+                            {{ form.check_in }}
+                            {% if form.check_in.errors %}
+                                <div class="invalid-feedback d-block">{{ form.check_in.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-medium">{{ form.check_out.label }}</label>
+                            {{ form.check_out }}
+                            {% if form.check_out.errors %}
+                                <div class="invalid-feedback d-block">{{ form.check_out.errors.0 }}</div>
+                            {% endif %}
+                        </div>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-medium text-dark">{{ form.check_out.label }}</label>
-                        {% render_field form.check_out class="form-control form-input" %}
-                        {% if form.check_out.errors %}
-                            <div class="invalid-feedback d-block">{{ form.check_out.errors.0 }}</div>
-                        {% endif %}
+
+                    <!-- Простой календарь на месяц -->
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0" id="calendar-month"></h6>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="changeMonth(-1)">←</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="changeMonth(1)">→</button>
+                            </div>
+                        </div>
+                        <div id="calendar" class="calendar-grid"></div>
+
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <span class="badge bg-danger me-2">Занято</span>
+                                <span class="badge bg-success me-2">Свободно</span>
+                                <span class="badge bg-info me-2">Сегодня</span>
+                                <span class="badge bg-warning">Выбрано</span>
+                            </small>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Количество гостей -->
                 <div class="mb-4">
                     <label class="form-label fw-medium text-dark">{{ form.guests.label }}</label>
-                    {% render_field form.guests class="form-control form-input" %}
+                    {{ form.guests }}
                     {% if form.guests.errors %}
                         <div class="invalid-feedback d-block">{{ form.guests.errors.0 }}</div>
                     {% endif %}
@@ -62,7 +86,7 @@
                 <!-- Примечания -->
                 <div class="mb-5">
                     <label class="form-label fw-medium text-dark">{{ form.notes.label }}</label>
-                    {% render_field form.notes class="form-control form-input" %}
+                    {{ form.notes }}
                 </div>
 
                 <!-- Информация о брони -->
@@ -81,7 +105,7 @@
 
                 <!-- Кнопки -->
                 <div class="d-flex gap-3">
-                    <button type="submit" class="btn btn-custom text-white flex-grow-1 py-3">
+                    <button type="submit" class="btn btn-custom text-white flex-grow-1 py-3" id="submit-btn">
                         Забронировать
                     </button>
                     <a href="{% url 'rooms' %}" class="btn btn-outline-secondary py-3">
@@ -93,13 +117,29 @@
     </div>
 </div>
 
-<!-- JavaScript для расчета стоимости -->
+<!-- JavaScript для календаря и расчета стоимости -->
 <script>
+// Глобальные переменные для календаря
+let currentMonth = new Date().getMonth();
+let currentYear = new Date().getFullYear();
+let busyDates = [];
+let selectedRoomId = null;
+
+// Месяцы на русском
+const monthNames = [
+    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+];
+
+// Дни недели на русском
+const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
 document.addEventListener('DOMContentLoaded', function() {
     const roomSelect = document.querySelector('#id_room');
     const checkInInput = document.querySelector('#id_check_in');
     const checkOutInput = document.querySelector('#id_check_out');
     const guestsInput = document.querySelector('#id_guests');
+    const submitBtn = document.querySelector('#submit-btn');
 
     const pricePerDayEl = document.getElementById('price-per-day');
     const nightsEl = document.getElementById('nights');
@@ -107,42 +147,435 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Кэш цен номеров
     const roomPrices = {};
-    {% for room in form.room.field.queryset %}
-        roomPrices[{{ room.id }}] = {{ room.price_per_day }};
-    {% endfor %}
 
-    // Функция расчета
+    // Заполняем цены из данных формы
+    {% if form.room.field.queryset %}
+        {% for room in form.room.field.queryset %}
+            roomPrices[{{ room.id }}] = {{ room.price_per_day }};
+        {% endfor %}
+    {% endif %}
+
+    // Функция расчета стоимости
     function calculateTotal() {
         const roomId = roomSelect.value;
-        const checkIn = new Date(checkInInput.value);
-        const checkOut = new Date(checkOutInput.value);
+        const checkIn = checkInInput.value;
+        const checkOut = checkOutInput.value;
 
-        if (roomId && checkIn && checkOut && !isNaN(checkIn) && !isNaN(checkOut)) {
-            const pricePerDay = roomPrices[roomId] || 0;
-            const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+        if (roomId && checkIn && checkOut) {
+            const checkInDate = new Date(checkIn);
+            const checkOutDate = new Date(checkOut);
 
-            pricePerDayEl.textContent = pricePerDay.toLocaleString('ru-RU');
-            nightsEl.textContent = nights;
-            totalPriceEl.textContent = (pricePerDay * nights).toLocaleString('ru-RU');
-        } else {
-            pricePerDayEl.textContent = '-';
-            nightsEl.textContent = '-';
-            totalPriceEl.textContent = '-';
+            if (!isNaN(checkInDate) && !isNaN(checkOutDate)) {
+                const pricePerDay = roomPrices[roomId] || 0;
+                const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+
+                if (nights > 0) {
+                    pricePerDayEl.textContent = pricePerDay.toLocaleString('ru-RU');
+                    nightsEl.textContent = nights;
+                    totalPriceEl.textContent = (pricePerDay * nights).toLocaleString('ru-RU');
+                    return true;
+                }
+            }
+        }
+
+        pricePerDayEl.textContent = '-';
+        nightsEl.textContent = '-';
+        totalPriceEl.textContent = '-';
+        return false;
+    }
+
+    // Загрузка занятых дат для выбранного номера
+    async function loadBusyDates(roomId) {
+        try {
+            const response = await fetch(`/accounts/api/room/${roomId}/busy-dates/`);
+            if (!response.ok) throw new Error('Ошибка загрузки данных');
+
+            const data = await response.json();
+            if (data.success) {
+                // Преобразуем периоды занятости в массив дат
+                busyDates = [];
+                data.busy_periods.forEach(period => {
+                    const start = new Date(period.start);
+                    const end = new Date(period.end);
+
+                    // Добавляем все даты в периоде
+                    let current = new Date(start);
+                    while (current <= end) {
+                        busyDates.push(current.toISOString().split('T')[0]);
+                        current.setDate(current.getDate() + 1);
+                    }
+                });
+
+                // Убираем дубликаты
+                busyDates = [...new Set(busyDates)];
+
+                // Обновляем календарь
+                renderCalendar();
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки занятых дат:', error);
+            busyDates = [];
+            renderCalendar();
         }
     }
 
+    // Проверка, занята ли дата
+    function isDateBusy(dateStr) {
+        return busyDates.includes(dateStr);
+    }
+
+// Рендер календаря с равномерными рядами
+function renderCalendar() {
+    const calendarEl = document.getElementById('calendar');
+    const monthTitleEl = document.getElementById('calendar-month');
+
+    // Устанавливаем заголовок
+    monthTitleEl.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+
+    // Первый день месяца
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    // Последний день месяца
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    // День недели первого дня (0-воскресенье, 1-понедельник и т.д.)
+    let firstDayOfWeek = firstDay.getDay();
+    if (firstDayOfWeek === 0) firstDayOfWeek = 6; // Воскресенье в конец
+    else firstDayOfWeek -= 1;
+
+    // Количество дней в месяце
+    const daysInMonth = lastDay.getDate();
+
+    // Рассчитываем количество строк (рядов)
+    const totalCells = firstDayOfWeek + daysInMonth;
+    const rows = Math.ceil(totalCells / 7);
+
+    // Текущие выбранные даты
+    const checkIn = document.querySelector('#id_check_in').value;
+    const checkOut = document.querySelector('#id_check_out').value;
+    const today = new Date().toISOString().split('T')[0];
+
+    let html = '<div class="row mb-2">';
+
+    // Заголовки дней недели
+    dayNames.forEach(day => {
+        html += `<div class="col text-center text-muted small fw-medium">${day}</div>`;
+    });
+
+    html += '</div>';
+
+    let dayCounter = 1;
+
+    // Рендерим все строки
+    for (let row = 0; row < rows; row++) {
+        html += '<div class="row">';
+
+        // 7 дней в неделе
+        for (let col = 0; col < 7; col++) {
+            const cellIndex = row * 7 + col;
+
+            if (cellIndex >= firstDayOfWeek && dayCounter <= daysInMonth) {
+                // Это день месяца
+                const date = new Date(currentYear, currentMonth, dayCounter);
+                const dateStr = date.toISOString().split('T')[0];
+                const isToday = dateStr === today;
+                const isPast = date < new Date(today);
+                const isBusy = isDateBusy(dateStr);
+                const isSelected = dateStr === checkIn || dateStr === checkOut;
+                const isInRange = checkIn && checkOut && date >= new Date(checkIn) && date <= new Date(checkOut);
+
+                // Определяем классы
+                let dayClass = 'calendar-day';
+                let disabled = false;
+
+                if (isToday) dayClass += ' today';
+                if (isPast) dayClass += ' past';
+                if (isBusy) {
+                    dayClass += ' busy';
+                    disabled = true;
+                }
+                if (isSelected) dayClass += ' selected';
+                if (isInRange) dayClass += ' in-range';
+
+                html += `
+                    <div class="col p-1">
+                        <button type="button"
+                                class="${dayClass}"
+                                ${disabled ? 'disabled' : ''}
+                                onclick="selectDate('${dateStr}')"
+                                title="${date.toLocaleDateString('ru-RU')}${isBusy ? ' (Занято)' : ''}">
+                            ${dayCounter}
+                        </button>
+                    </div>
+                `;
+
+                dayCounter++;
+            } else if (cellIndex < firstDayOfWeek) {
+                // Пустая ячейка в начале месяца
+                html += '<div class="col p-1"></div>';
+            } else {
+                // Не добавляем пустые ячейки в конце месяца
+                // Вместо этого добавляем пустую колонку, которая не растягивается
+                html += '<div class="col p-1"></div>';
+            }
+        }
+
+        html += '</div>';
+    }
+
+    calendarEl.innerHTML = html;
+
+    // Обновляем состояние кнопки отправки
+    updateSubmitButton();
+}
+
+    // Выбор даты
+    window.selectDate = function(dateStr) {
+        const checkInInput = document.querySelector('#id_check_in');
+        const checkOutInput = document.querySelector('#id_check_out');
+
+        if (isDateBusy(dateStr)) {
+            alert('Эта дата занята. Пожалуйста, выберите другую дату.');
+            return;
+        }
+
+        if (!checkInInput.value) {
+            // Выбор даты заезда
+            checkInInput.value = dateStr;
+            checkOutInput.min = dateStr;
+            checkOutInput.value = '';
+        } else if (!checkOutInput.value) {
+            // Проверяем, что дата выезда позже заезда
+            if (new Date(dateStr) > new Date(checkInInput.value)) {
+                // Проверяем, нет ли занятых дат в выбранном диапазоне
+                if (checkRangeForBusyDates(checkInInput.value, dateStr)) {
+                    checkOutInput.value = dateStr;
+                } else {
+                    alert('В выбранном диапазоне есть занятые даты.');
+                    return;
+                }
+            } else {
+                // Если выбрана более ранняя дата, делаем её датой заезда
+                checkInInput.value = dateStr;
+                checkOutInput.value = '';
+                checkOutInput.min = dateStr;
+            }
+        } else {
+            // Сброс выбора
+            checkInInput.value = dateStr;
+            checkOutInput.value = '';
+            checkOutInput.min = dateStr;
+        }
+
+        calculateTotal();
+        renderCalendar();
+    };
+
+    // Проверка диапазона на наличие занятых дат
+    function checkRangeForBusyDates(startStr, endStr) {
+        const start = new Date(startStr);
+        const end = new Date(endStr);
+        let current = new Date(start);
+
+        while (current <= end) {
+            const dateStr = current.toISOString().split('T')[0];
+            if (isDateBusy(dateStr)) {
+                return false;
+            }
+            current.setDate(current.getDate() + 1);
+        }
+
+        return true;
+    }
+
+    // Обновление состояния кнопки отправки
+    function updateSubmitButton() {
+        const roomId = roomSelect.value;
+        const checkIn = checkInInput.value;
+        const checkOut = checkOutInput.value;
+        const guests = guestsInput.value;
+
+        if (!roomId || !checkIn || !checkOut || !guests || guests < 1) {
+            submitBtn.disabled = true;
+            return;
+        }
+
+        // Проверяем, что дата выезда позже заезда
+        if (new Date(checkOut) <= new Date(checkIn)) {
+            submitBtn.disabled = true;
+            return;
+        }
+
+        // Проверяем, нет ли занятых дат в выбранном диапазоне
+        if (!checkRangeForBusyDates(checkIn, checkOut)) {
+            submitBtn.disabled = true;
+            return;
+        }
+
+        submitBtn.disabled = false;
+    }
+
+    // Смена месяца
+    window.changeMonth = function(delta) {
+        currentMonth += delta;
+
+        if (currentMonth < 0) {
+            currentMonth = 11;
+            currentYear--;
+        } else if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear++;
+        }
+
+        renderCalendar();
+    };
+
     // Слушатели событий
-    roomSelect.addEventListener('change', calculateTotal);
-    checkInInput.addEventListener('change', calculateTotal);
-    checkOutInput.addEventListener('change', calculateTotal);
+    roomSelect.addEventListener('change', function() {
+        selectedRoomId = this.value;
+        if (selectedRoomId) {
+            loadBusyDates(selectedRoomId);
+            calculateTotal();
+        } else {
+            busyDates = [];
+            renderCalendar();
+        }
+    });
+
+    checkInInput.addEventListener('change', function() {
+        if (this.value && checkOutInput) {
+            const minDate = new Date(this.value);
+            minDate.setDate(minDate.getDate() + 1);
+            checkOutInput.min = minDate.toISOString().split('T')[0];
+
+            if (checkOutInput.value && new Date(checkOutInput.value) <= new Date(this.value)) {
+                checkOutInput.value = '';
+            }
+        }
+        calculateTotal();
+        renderCalendar();
+    });
+
+    checkOutInput.addEventListener('change', function() {
+        calculateTotal();
+        renderCalendar();
+    });
+
+    guestsInput.addEventListener('change', updateSubmitButton);
+
+    // Устанавливаем минимальные даты
+    const today = new Date().toISOString().split('T')[0];
+    if (checkInInput) {
+        checkInInput.min = today;
+        checkInInput.value = today;
+    }
+
+    if (checkOutInput) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        checkOutInput.min = tomorrow.toISOString().split('T')[0];
+        checkOutInput.value = tomorrow.toISOString().split('T')[0];
+    }
 
     // Предзаполнение из URL
     const urlParams = new URLSearchParams(window.location.search);
     const roomId = urlParams.get('room_id');
     if (roomId && roomSelect.querySelector(`option[value="${roomId}"]`)) {
         roomSelect.value = roomId;
+        selectedRoomId = roomId;
+
+        // После установки номера загружаем занятые даты
+        setTimeout(() => {
+            loadBusyDates(roomId);
+            calculateTotal();
+        }, 100);
+    } else {
+        // Если номер не выбран, просто рендерим пустой календарь
+        setTimeout(renderCalendar, 100);
         calculateTotal();
     }
+
+    // Инициализация
+    updateSubmitButton();
 });
 </script>
+
+<style>
+.calendar-grid {
+    font-size: 14px;
+}
+
+.calendar-day {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 8px 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    background-color: white;
+    width: 100%;
+}
+
+.calendar-day:hover:not(:disabled) {
+    background-color: #f8f9fa;
+    transform: translateY(-1px);
+}
+
+.calendar-day.today {
+    border-color: #0dcaf0;
+    background-color: #e3f2fd;
+    font-weight: bold;
+}
+
+.calendar-day.past {
+    color: #adb5bd;
+    cursor: not-allowed;
+    background-color: #f8f9fa;
+}
+
+.calendar-day.busy {
+    background-color: #f8d7da;
+    color: #721c24;
+    cursor: not-allowed;
+    border-color: #f5c2c7;
+}
+
+.calendar-day.busy:hover {
+    background-color: #f8d7da;
+    transform: none;
+}
+
+.calendar-day.selected {
+    background-color: #d1e7dd;
+    color: #0f5132;
+    border-color: #198754;
+    font-weight: bold;
+}
+
+.calendar-day.in-range {
+    background-color: #e7f5ef;
+    color: #0f5132;
+}
+
+.calendar-day:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+#submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.row {
+    margin-bottom: 2px;
+}
+
+.col {
+    padding: 2px;
+}
+</style>
 {% endblock %}

@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+
+{% block title %}Мои бронирования{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Заголовок -->
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h1 class="fw-bold text-success mb-2">Мои бронирования</h1>
+            <p class="text-muted">История и текущие брони</p>
+        </div>
+        <a href="{% url 'booking_create' %}" class="btn btn-custom text-white">
+            + Новое бронирование
+        </a>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="form-card p-4 mb-4">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <select class="form-select form-input" id="statusFilter">
+                    <option value="">Все статусы</option>
+                    <option value="pending">Ожидает подтверждения</option>
+                    <option value="confirmed">Подтверждена</option>
+                    <option value="cancelled">Отменена</option>
+                    <option value="completed">Завершена</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="date" class="form-control form-input" id="dateFilter" placeholder="Дата заезда">
+            </div>
+            <div class="col-md-6">
+                <input type="text" class="form-control form-input" id="searchFilter" placeholder="Поиск по названию номера...">
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица бронирований -->
+    {% if bookings %}
+    <div class="form-card overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="bookingsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Номер</th>
+                        <th>Даты</th>
+                        <th>Гостей</th>
+                        <th>Статус</th>
+                        <th>Стоимость</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for booking in bookings %}
+                    <tr class="booking-row" data-status="{{ booking.status }}" 
+                        data-checkin="{{ booking.check_in|date:'Y-m-d' }}"
+                        data-room="{{ booking.room.name|default:''|lower }}">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {% if booking.room and booking.room.image %}
+                                <img src="{{ booking.room.image.url }}" 
+                                     class="rounded me-3" 
+                                     style="width: 60px; height: 60px; object-fit: cover;">
+                                {% else %}
+                                <div class="bg-light rounded d-flex align-items-center justify-content-center me-3" 
+                                     style="width: 60px; height: 60px;">
+                                    <span class="text-muted">🏨</span>
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <strong>{{ booking.room.name|default:booking.get_room_type_display }}</strong>
+                                    <small class="text-muted d-block">{{ booking.room.get_type_display|default:"" }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div>{{ booking.check_in|date:"d.m.Y" }}</div>
+                            <small class="text-muted">до {{ booking.check_out|date:"d.m.Y" }}</small>
+                            <div class="small text-muted">{{ booking.days }} ночей</div>
+                        </td>
+                        <td>{{ booking.guests }} чел.</td>
+                        <td>
+                            {% if booking.status == 'confirmed' %}
+                            <span class="badge bg-success">{{ booking.get_status_display }}</span>
+                            {% elif booking.status == 'pending' %}
+                            <span class="badge bg-warning">{{ booking.get_status_display }}</span>
+                            {% elif booking.status == 'cancelled' %}
+                            <span class="badge bg-danger">{{ booking.get_status_display }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ booking.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong class="text-success">{{ booking.total_price }} ₽</strong>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                {% if booking.status == 'pending' %}
+                                <button type="button" class="btn btn-outline-danger btn-cancel" 
+                                        data-booking-id="{{ booking.id }}"
+                                        data-bs-toggle="modal" data-bs-target="#cancelModal">
+                                    Отменить
+                                </button>
+                                {% endif %}
+                                <button type="button" class="btn btn-outline-primary" 
+                                        data-bs-toggle="modal" data-bs-target="#detailsModal{{ booking.id }}">
+                                    Подробнее
+                                </button>
+                            </div>
+                            
+                            <!-- Модальное окно с деталями -->
+                            <div class="modal fade" id="detailsModal{{ booking.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Детали бронирования</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row mb-3">
+                                                <div class="col-6">
+                                                    <strong>Номер:</strong><br>
+                                                    {{ booking.room.name|default:booking.get_room_type_display }}
+                                                </div>
+                                                <div class="col-6">
+                                                    <strong>Тип:</strong><br>
+                                                    {{ booking.room.get_type_display|default:"" }}
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <div class="col-6">
+                                                    <strong>Заезд:</strong><br>
+                                                    {{ booking.check_in|date:"d.m.Y" }}
+                                                </div>
+                                                <div class="col-6">
+                                                    <strong>Выезд:</strong><br>
+                                                    {{ booking.check_out|date:"d.m.Y" }}
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <div class="col-6">
+                                                    <strong>Количество гостей:</strong><br>
+                                                    {{ booking.guests }}
+                                                </div>
+                                                <div class="col-6">
+                                                    <strong>Стоимость:</strong><br>
+                                                    {{ booking.total_price }} ₽
+                                                </div>
+                                            </div>
+                                            {% if booking.notes %}
+                                            <div class="mb-3">
+                                                <strong>Примечания:</strong><br>
+                                                {{ booking.notes|linebreaks }}
+                                            </div>
+                                            {% endif %}
+                                            <div class="mb-3">
+                                                <strong>Дата создания:</strong><br>
+                                                {{ booking.created_at|date:"d.m.Y H:i" }}
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Модальное окно отмены -->
+    <div class="modal fade" id="cancelModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post" action="{% url 'booking_cancel' %}" id="cancelForm">
+                    {% csrf_token %}
+                    <div class="modal-header">
+                        <h5 class="modal-title">Отмена бронирования</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="booking_id" id="cancelBookingId">
+                        <p>Вы уверены, что хотите отменить это бронирование?</p>
+                        <div class="form-group">
+                            <label for="cancelReason" class="form-label">Причина отмены (необязательно):</label>
+                            <textarea class="form-control" id="cancelReason" name="reason" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Нет, оставить</button>
+                        <button type="submit" class="btn btn-danger">Да, отменить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Пагинация -->
+    {% if is_paginated %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Назад</a>
+            </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Вперед</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <!-- Нет бронирований -->
+    <div class="form-card text-center p-5">
+        <div class="mb-4">
+            <div style="font-size: 4rem; color: #ccc;">📅</div>
+        </div>
+        <h4 class="text-muted mb-3">У вас пока нет бронирований</h4>
+        <p class="text-muted mb-4">Забронируйте номер для отдыха в нашем санатории</p>
+        <a href="{% url 'rooms' %}" class="btn btn-custom text-white px-5">
+            Выбрать номер
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- JavaScript для фильтрации и взаимодействия -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Фильтрация по статусу
+    const statusFilter = document.getElementById('statusFilter');
+    const dateFilter = document.getElementById('dateFilter');
+    const searchFilter = document.getElementById('searchFilter');
+    const bookingRows = document.querySelectorAll('.booking-row');
+    
+    function filterBookings() {
+        const status = statusFilter.value;
+        const date = dateFilter.value;
+        const search = searchFilter.value.toLowerCase();
+        
+        bookingRows.forEach(row => {
+            let show = true;
+            
+            // Фильтр по статусу
+            if (status && row.dataset.status !== status) {
+                show = false;
+            }
+            
+            // Фильтр по дате
+            if (date && row.dataset.checkin !== date) {
+                show = false;
+            }
+            
+            // Фильтр по поиску
+            if (search && !row.dataset.room.includes(search)) {
+                show = false;
+            }
+            
+            row.style.display = show ? '' : 'none';
+        });
+    }
+    
+    statusFilter.addEventListener('change', filterBookings);
+    dateFilter.addEventListener('change', filterBookings);
+    searchFilter.addEventListener('input', filterBookings);
+    
+    // Отмена бронирования
+    const cancelButtons = document.querySelectorAll('.btn-cancel');
+    const cancelBookingIdInput = document.getElementById('cancelBookingId');
+    
+    cancelButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            cancelBookingIdInput.value = this.dataset.bookingId;
+        });
+    });
+    
+    // Сортировка по умолчанию (последние брони сверху)
+    const table = document.getElementById('bookingsTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    rows.sort((a, b) => {
+        const dateA = new Date(a.dataset.checkin);
+        const dateB = new Date(b.dataset.checkin);
+        return dateB - dateA; // По убыванию (новые сверху)
+    });
+    
+    // Переставляем строки
+    rows.forEach(row => tbody.appendChild(row));
+});
+</script>
+
+<style>
+.booking-row:hover {
+    background-color: #f8f9fa;
+    transition: background-color 0.2s;
+}
+
+.modal-backdrop {
+    backdrop-filter: blur(5px);
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+    background-color: #f8f9fa;
+}
+
+.badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.btn-group-sm .btn {
+    padding: 4px 12px;
+    font-size: 14px;
+}
+</style>
+{% endblock %}
