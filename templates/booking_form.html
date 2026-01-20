@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 // Рендер календаря с равномерными рядами
-function renderCalendar() {
+    function renderCalendar() {
     const calendarEl = document.getElementById('calendar');
     const monthTitleEl = document.getElementById('calendar-month');
 
@@ -251,7 +251,12 @@ function renderCalendar() {
     // Текущие выбранные даты
     const checkIn = document.querySelector('#id_check_in').value;
     const checkOut = document.querySelector('#id_check_out').value;
-    const today = new Date().toISOString().split('T')[0];
+
+    // Сегодняшняя дата - КОРРЕКТНОЕ ФОРМАТИРОВАНИЕ
+    const today = new Date();
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth();
+    const todayDay = today.getDate();
 
     let html = '<div class="row mb-2">';
 
@@ -273,11 +278,21 @@ function renderCalendar() {
             const cellIndex = row * 7 + col;
 
             if (cellIndex >= firstDayOfWeek && dayCounter <= daysInMonth) {
-                // Это день месяца
+                // Это день месяца - ФИКС ПРОБЛЕМЫ С ДАТАМИ
                 const date = new Date(currentYear, currentMonth, dayCounter);
-                const dateStr = date.toISOString().split('T')[0];
-                const isToday = dateStr === today;
-                const isPast = date < new Date(today);
+
+                // КОРРЕКТНОЕ ФОРМАТИРОВАНИЕ БЕЗ ПРОБЛЕМ ЧАСОВОГО ПОЯСА
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const dateStr = `${year}-${month}-${day}`;
+
+                // Проверяем, сегодня ли это
+                const isToday = (currentYear === todayYear &&
+                                 currentMonth === todayMonth &&
+                                 dayCounter === todayDay);
+
+                const isPast = date < new Date(today.setHours(0, 0, 0, 0));
                 const isBusy = isDateBusy(dateStr);
                 const isSelected = dateStr === checkIn || dateStr === checkOut;
                 const isInRange = checkIn && checkOut && date >= new Date(checkIn) && date <= new Date(checkOut);
@@ -328,63 +343,76 @@ function renderCalendar() {
 }
 
     // Выбор даты
-    window.selectDate = function(dateStr) {
-        const checkInInput = document.querySelector('#id_check_in');
-        const checkOutInput = document.querySelector('#id_check_out');
+    // Выбор даты - ИСПРАВЛЕННАЯ ВЕРСИЯ
+window.selectDate = function(dateStr) {
+    const checkInInput = document.querySelector('#id_check_in');
+    const checkOutInput = document.querySelector('#id_check_out');
 
-        if (isDateBusy(dateStr)) {
-            alert('Эта дата занята. Пожалуйста, выберите другую дату.');
-            return;
-        }
+    if (isDateBusy(dateStr)) {
+        alert('Эта дата занята. Пожалуйста, выберите другую дату.');
+        return;
+    }
 
-        if (!checkInInput.value) {
-            // Выбор даты заезда
-            checkInInput.value = dateStr;
-            checkOutInput.min = dateStr;
-            checkOutInput.value = '';
-        } else if (!checkOutInput.value) {
-            // Проверяем, что дата выезда позже заезда
-            if (new Date(dateStr) > new Date(checkInInput.value)) {
-                // Проверяем, нет ли занятых дат в выбранном диапазоне
-                if (checkRangeForBusyDates(checkInInput.value, dateStr)) {
-                    checkOutInput.value = dateStr;
-                } else {
-                    alert('В выбранном диапазоне есть занятые даты.');
-                    return;
-                }
+    // dateStr уже в правильном формате YYYY-MM-DD
+    // Просто используем её без преобразований
+
+    if (!checkInInput.value) {
+        // Выбор даты заезда
+        checkInInput.value = dateStr;
+        checkOutInput.min = dateStr;
+        checkOutInput.value = '';
+    } else if (!checkOutInput.value) {
+        // Сравниваем даты как строки в формате YYYY-MM-DD
+        if (dateStr > checkInInput.value) {
+            // Проверяем, нет ли занятых дат в выбранном диапазоне
+            if (checkRangeForBusyDates(checkInInput.value, dateStr)) {
+                checkOutInput.value = dateStr;
             } else {
-                // Если выбрана более ранняя дата, делаем её датой заезда
-                checkInInput.value = dateStr;
-                checkOutInput.value = '';
-                checkOutInput.min = dateStr;
+                alert('В выбранном диапазоне есть занятые даты.');
+                return;
             }
         } else {
-            // Сброс выбора
+            // Если выбрана более ранняя или та же дата, делаем её датой заезда
             checkInInput.value = dateStr;
             checkOutInput.value = '';
             checkOutInput.min = dateStr;
         }
+    } else {
+        // Сброс выбора
+        checkInInput.value = dateStr;
+        checkOutInput.value = '';
+        checkOutInput.min = dateStr;
+    }
 
-        calculateTotal();
-        renderCalendar();
-    };
+    calculateTotal();
+    renderCalendar();
+};
 
     // Проверка диапазона на наличие занятых дат
-    function checkRangeForBusyDates(startStr, endStr) {
-        const start = new Date(startStr);
-        const end = new Date(endStr);
-        let current = new Date(start);
+    // Проверка диапазона на наличие занятых дат
+function checkRangeForBusyDates(startStr, endStr) {
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    let current = new Date(start);
 
-        while (current <= end) {
-            const dateStr = current.toISOString().split('T')[0];
-            if (isDateBusy(dateStr)) {
-                return false;
-            }
-            current.setDate(current.getDate() + 1);
+    // Итерируем по всем датам в диапазоне
+    while (current <= end) {
+        // Форматируем текущую дату так же, как в renderCalendar
+        const year = current.getFullYear();
+        const month = String(current.getMonth() + 1).padStart(2, '0');
+        const day = String(current.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+
+        if (isDateBusy(dateStr)) {
+            return false; // Нашли занятую дату
         }
 
-        return true;
+        // Переходим к следующему дню
+        current.setDate(current.getDate() + 1);
     }
+
+    return true; // Все даты свободны
+}
 
     // Обновление состояния кнопки отправки
     function updateSubmitButton() {
