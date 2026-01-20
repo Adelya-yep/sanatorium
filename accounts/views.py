@@ -1,13 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
 from django.views.generic import CreateView, TemplateView, ListView, UpdateView
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.http import HttpResponseRedirect, JsonResponse
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, Avg, Q, Max  # Добавить Avg и Q
 
 # Импорт из datetime
 from datetime import date, timedelta, datetime
@@ -19,7 +19,9 @@ from .models import Booking, Room, GuestProfile
 
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
-
+from django.contrib.auth.models import User
+# Добавьте этот импорт в начало views.py, после других импортов
+from .mixins import StaffRequiredMixin, NotStaffMixin
 
 # ГЛАВНАЯ СТРАНИЦА (публичная)
 def home(request):
@@ -28,9 +30,51 @@ def home(request):
     return render(request, 'home.html', {'rooms': rooms})
 
 
-# ЛИЧНЫЙ КАБИНЕТ
+# АДМИН ПАНЕЛЬ
 @method_decorator(login_required, name='dispatch')
-class DashboardView(TemplateView):
+class AdminDashboardView(StaffRequiredMixin, TemplateView):
+    """Панель администратора (только для персонала)"""
+    template_name = 'admin/dashboard.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Статистика для админа
+        total_bookings = Booking.objects.count()
+        pending_bookings = Booking.objects.filter(status='pending').count()
+        active_bookings = Booking.objects.filter(status='confirmed').count()
+        total_guests = GuestProfile.objects.count()
+        total_rooms = Room.objects.count()
+
+        # Последние бронирования
+        recent_bookings = Booking.objects.select_related('user', 'room').order_by('-created_at')[:10]
+
+        # Статистика по доходам
+        revenue_data = Booking.objects.filter(
+            status='completed'
+        ).aggregate(
+            total_revenue=Sum('total_price'),
+            avg_booking=Avg('total_price'),
+            max_booking=Max('total_price')
+        )
+
+        context.update({
+            'total_bookings': total_bookings,
+            'pending_bookings': pending_bookings,
+            'active_bookings': active_bookings,
+            'total_guests': total_guests,
+            'total_rooms': total_rooms,
+            'recent_bookings': recent_bookings,
+            'revenue': revenue_data['total_revenue'] or 0,
+            'avg_revenue': revenue_data['avg_booking'] or 0,
+        })
+        return context
+
+
+# ЛИЧНЫЙ КАБИНЕТ ПОЛЬЗОВАТЕЛЯ (НЕ для админов)
+@method_decorator(login_required, name='dispatch')
+class UserDashboardView(NotStaffMixin, TemplateView):
+    """Личный кабинет пользователя (не для администраторов)"""
     template_name = 'dashboard.html'
 
     def get_context_data(self, **kwargs):
@@ -78,7 +122,7 @@ class DashboardView(TemplateView):
         return context
 
 
-# КАТАЛОГ НОМЕРОВ
+# КАТАЛОГ НОМЕРОВ (доступен всем)
 class RoomListView(ListView):
     model = Room
     template_name = 'catalog/rooms.html'
@@ -120,15 +164,106 @@ class RoomListView(ListView):
         return context
 
 
-# АУТЕНТИФИКАЦИЯ
+# УПРАВЛЕНИЕ БРОНИРОВАНИЯМИ (админ)
+@method_decorator(login_required, name='dispatch')
+class AdminBookingListView(StaffRequiredMixin, ListView):
+    """Список всех бронирований (только для админа)"""
+    model = Booking
+    template_name = 'admin/booking_list.html'
+    context_object_name = 'bookings'
+    paginate_by = 20
+
+    def get_queryset(self):
+        queryset = Booking.objects.select_related('user', 'room').order_by('-created_at')
+
+        # Фильтры
+        status = self.request.GET.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+
+        room_type = self.request.GET.get('room_type')
+        if room_type:
+            queryset = queryset.filter(room__type=room_type)
+
+        date_from = self.request.GET.get('date_from')
+        if date_from:
+            try:
+                queryset = queryset.filter(check_in__gte=date_from)
+            except ValueError:
+                pass
+
+        date_to = self.request.GET.get('date_to')
+        if date_to:
+            try:
+                queryset = queryset.filter(check_out__lte=date_to)
+            except ValueError:
+                pass
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['status_choices'] = Booking.STATUS_CHOICES
+        context['room_types'] = Room.TYPE_CHOICES
+        return context
+
+
+# АДМИН: УПРАВЛЕНИЕ НОМЕРАМИ
+@method_decorator(login_required, name='dispatch')
+class AdminRoomListView(StaffRequiredMixin, ListView):
+    """Управление номерами (только для админа)"""
+    model = Room
+    template_name = 'admin/room_list.html'
+    context_object_name = 'rooms'
+
+    def get_queryset(self):
+        return Room.objects.all().order_by('type', 'name')
+
+
+# АДМИН: ИЗМЕНЕНИЕ СТАТУСА БРОНИРОВАНИЯ
+@require_POST
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def admin_change_booking_status(request):
+    """Изменение статуса бронирования (только для админа)"""
+    booking_id = request.POST.get('booking_id')
+    new_status = request.POST.get('status')
+
+    try:
+        booking = Booking.objects.get(id=booking_id)
+        old_status = booking.status
+        booking.status = new_status
+        booking.save()
+
+        messages.success(request, f'Статус бронирования #{booking_id} изменен: {old_status} → {new_status}')
+    except Booking.DoesNotExist:
+        messages.error(request, 'Бронирование не найдено')
+
+    return redirect('admin_booking_list')
+
+
+# АДМИН: УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ
+@method_decorator(login_required, name='dispatch')
+class AdminUserListView(StaffRequiredMixin, ListView):
+    """Список пользователей (только для админа)"""
+    template_name = 'admin/user_list.html'
+    context_object_name = 'users'
+    paginate_by = 20
+
+    def get_queryset(self):
+        return User.objects.all().order_by('-date_joined')
+
+
+# АУТЕНТИФИКАЦИЯ (доступна всем)
 class SignUpView(CreateView):
     form_class = GuestRegistrationForm
     success_url = reverse_lazy('home')
     template_name = 'registration/signup.html'
 
 
-# БРОНИРОВАНИЕ
-class BookingCreateView(LoginRequiredMixin, CreateView):
+# БРОНИРОВАНИЕ (только для обычных пользователей)
+@method_decorator(login_required, name='dispatch')
+class BookingCreateView(NotStaffMixin, CreateView):
     model = Booking
     form_class = BookingForm
     template_name = 'booking_form.html'
@@ -156,10 +291,12 @@ class BookingCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse_lazy('booking_list')
+        return reverse_lazy('user_booking_list')
 
 
-class BookingListView(LoginRequiredMixin, ListView):
+# СПИСОК БРОНИРОВАНИЙ ПОЛЬЗОВАТЕЛЯ (не для админов)
+@method_decorator(login_required, name='dispatch')
+class UserBookingListView(NotStaffMixin, ListView):
     model = Booking
     template_name = 'booking_list.html'
     context_object_name = 'bookings'
@@ -171,9 +308,10 @@ class BookingListView(LoginRequiredMixin, ListView):
         ).select_related('room').order_by('-created_at')
 
 
-# ОТМЕНА БРОНИРОВАНИЯ
+# ОТМЕНА БРОНИРОВАНИЯ (только пользователи)
 @require_POST
 @login_required
+@user_passes_test(lambda u: not u.is_staff)
 def booking_cancel(request):
     booking_id = request.POST.get('booking_id')
     reason = request.POST.get('reason', '')
@@ -194,12 +332,12 @@ def booking_cancel(request):
     except Booking.DoesNotExist:
         messages.error(request, 'Бронирование не найдено.')
 
-    return redirect('booking_list')
+    return redirect('user_booking_list')
 
 
-# ПРОСМОТР ПРОФИЛЯ
+# ПРОСМОТР ПРОФИЛЯ (только пользователи)
 @method_decorator(login_required, name='dispatch')
-class ProfileView(TemplateView):
+class ProfileView(NotStaffMixin, TemplateView):
     template_name = 'profile.html'
 
     def get_context_data(self, **kwargs):
@@ -216,9 +354,9 @@ class ProfileView(TemplateView):
         return context
 
 
-# РЕДАКТИРОВАНИЕ ПРОФИЛЯ
+# РЕДАКТИРОВАНИЕ ПРОФИЛЯ (только пользователи)
 @method_decorator(login_required, name='dispatch')
-class ProfileUpdateView(UpdateView):
+class ProfileUpdateView(NotStaffMixin, UpdateView):
     model = GuestProfile
     form_class = GuestProfileForm
     template_name = 'profile_edit.html'
@@ -228,7 +366,7 @@ class ProfileUpdateView(UpdateView):
 
     def get_success_url(self):
         messages.success(self.request, 'Профиль успешно обновлен!')
-        return reverse_lazy('dashboard')
+        return reverse_lazy('user_dashboard')
 
     def form_valid(self, form):
         # Пересчитываем процент заполнения
@@ -238,13 +376,13 @@ class ProfileUpdateView(UpdateView):
         return super().form_valid(form)
 
 
-# ПРОЦЕДУРЫ
+# ПРОЦЕДУРЫ (только пользователи)
 @method_decorator(login_required, name='dispatch')
-class ProceduresView(TemplateView):
+class ProceduresView(NotStaffMixin, TemplateView):
     template_name = 'procedures.html'
 
 
-# API ФУНКЦИИ
+# API ФУНКЦИИ (доступны всем авторизованным)
 @require_GET
 @login_required
 def api_room_availability(request):
@@ -370,150 +508,16 @@ def api_room_busy_dates(request, room_id):
         }, status=404)
 
 
-@csrf_exempt  # Временно отключаем CSRF для API (для тестов)
-@require_POST
-@login_required
-def api_create_booking(request):
-    """API для создания бронирования через AJAX"""
-    try:
-        data = json.loads(request.body)
+# ДЕКОРАТОР ДЛЯ ПЕРЕНАПРАВЛЕНИЯ АДМИНОВ
+def redirect_based_on_role(view_func):
+    """Декоратор для перенаправления пользователей на нужную dashboard"""
 
-        # Проверяем обязательные поля
-        required_fields = ['room_id', 'check_in', 'check_out', 'guests']
-        for field in required_fields:
-            if field not in data:
-                return JsonResponse({
-                    'success': False,
-                    'error': f'Отсутствует поле: {field}'
-                }, status=400)
+    def wrapper(request, *args, **kwargs):
+        if request.user.is_authenticated:
+            if request.user.is_staff:
+                return redirect('admin_dashboard')
+            else:
+                return view_func(request, *args, **kwargs)
+        return view_func(request, *args, **kwargs)
 
-        # Получаем данные
-        room = Room.objects.get(id=data['room_id'], is_active=True)
-        check_in = datetime.strptime(data['check_in'], '%Y-%m-%d').date()
-        check_out = datetime.strptime(data['check_out'], '%Y-%m-%d').date()
-        guests = int(data['guests'])
-        notes = data.get('notes', '')
-
-        # Проверяем доступность
-        overlapping = Booking.objects.filter(
-            room=room,
-            status__in=['pending', 'confirmed'],
-            check_in__lt=check_out,
-            check_out__gt=check_in
-        ).exists()
-
-        if overlapping:
-            return JsonResponse({
-                'success': False,
-                'error': 'Номер занят на выбранные даты'
-            }, status=400)
-
-        # Проверяем вместимость
-        if guests > room.capacity:
-            return JsonResponse({
-                'success': False,
-                'error': f'В номере максимальная вместимость: {room.capacity} человека'
-            }, status=400)
-
-        # Создаем бронирование
-        booking = Booking.objects.create(
-            user=request.user,
-            room=room,
-            room_type=room.type,
-            check_in=check_in,
-            check_out=check_out,
-            guests=guests,
-            notes=notes,
-            status='pending'
-        )
-
-        # Сохраняем для расчета цены
-        booking.save()
-
-        return JsonResponse({
-            'success': True,
-            'booking_id': booking.id,
-            'message': 'Бронирование успешно создано',
-            'booking': {
-                'id': booking.id,
-                'room': room.name,
-                'check_in': booking.check_in.isoformat(),
-                'check_out': booking.check_out.isoformat(),
-                'guests': booking.guests,
-                'total_price': float(booking.total_price),
-                'status': booking.status
-            }
-        })
-
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Неверный формат JSON'
-        }, status=400)
-    except Room.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': 'Номер не найден'
-        }, status=404)
-    except ValueError as e:
-        return JsonResponse({
-            'success': False,
-            'error': f'Неверные данные: {str(e)}'
-        }, status=400)
-
-
-@require_GET
-@login_required
-def check_availability(request):
-    """AJAX проверка доступности (альтернатива для простой формы)"""
-    room_id = request.GET.get('room_id')
-    check_in_str = request.GET.get('check_in')
-    check_out_str = request.GET.get('check_out')
-
-    if not all([room_id, check_in_str, check_out_str]):
-        return JsonResponse({'available': False, 'error': 'Недостаточно данных'})
-
-    try:
-        room = Room.objects.get(id=room_id, is_active=True)
-        check_in = datetime.strptime(check_in_str, '%Y-%m-%d').date()
-        check_out = datetime.strptime(check_out_str, '%Y-%m-%d').date()
-
-        # Проверяем доступность
-        overlapping = Booking.objects.filter(
-            room=room,
-            status__in=['pending', 'confirmed'],
-            check_in__lt=check_out,
-            check_out__gt=check_in
-        ).exists()
-
-        # Расчет стоимости
-        days = (check_out - check_in).days
-        total_price = room.price_per_day * days if days > 0 else 0
-
-        return JsonResponse({
-            'available': not overlapping,
-            'room_id': room.id,
-            'room_name': room.name,
-            'check_in': check_in_str,
-            'check_out': check_out_str,
-            'days': days,
-            'price_per_day': float(room.price_per_day),
-            'total_price': float(total_price),
-            'message': 'Доступен' if not overlapping else 'Занят'
-        })
-
-    except (Room.DoesNotExist, ValueError):
-        return JsonResponse({'available': False, 'error': 'Ошибка данных'})
-
-
-# ОБРАБОТЧИКИ ОШИБОК
-def handler403(request, exception):
-    return render(request, '403.html', status=403)
-
-
-def handler404(request, exception):
-    return render(request, '404.html', status=404)
-
-
-def handler500(request):
-    return render(request, '500.html', status=500)
+    return wrapper

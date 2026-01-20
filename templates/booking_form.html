@@ -343,7 +343,6 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
     // Выбор даты
-    // Выбор даты - ИСПРАВЛЕННАЯ ВЕРСИЯ
 window.selectDate = function(dateStr) {
     const checkInInput = document.querySelector('#id_check_in');
     const checkOutInput = document.querySelector('#id_check_out');
@@ -388,7 +387,6 @@ window.selectDate = function(dateStr) {
     renderCalendar();
 };
 
-    // Проверка диапазона на наличие занятых дат
     // Проверка диапазона на наличие занятых дат
 function checkRangeForBusyDates(startStr, endStr) {
     const start = new Date(startStr);
