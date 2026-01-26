@@ -3,13 +3,15 @@ from django.contrib.auth import views as auth_views
 from .views import (
     home,
     SignUpView,
-    AdminDashboardView, UserDashboardView,
+    AdminDashboardView, UserDashboardView, AdminCreateUserView, AdminUserProfileView,
     ProfileView, ProceduresView,
     BookingCreateView, UserBookingListView, AdminBookingListView,
     RoomListView, AdminRoomListView, AdminUserListView,
     ProfileUpdateView, booking_cancel, admin_change_booking_status,
     # API функции
     api_room_availability, api_room_busy_dates,
+    # Новые функции для управления пользователями
+    admin_toggle_user_active, admin_delete_user,
     # Декораторы
     redirect_based_on_role
 )
@@ -45,7 +47,11 @@ urlpatterns = [
 
     # Админ: управление пользователями
     path('admin/users/', AdminUserListView.as_view(), name='admin_user_list'),
+    path('admin/users/<int:user_id>/toggle-active/', admin_toggle_user_active, name='admin_toggle_user_active'),
+    path('admin/users/<int:user_id>/delete/', admin_delete_user, name='admin_delete_user'),
+path('admin/users/<int:pk>/profile/', AdminUserProfileView.as_view(), name='admin_user_profile'),
 
+    path('admin/users/create/', AdminCreateUserView.as_view(), name='admin_user_create'),
     # Профиль (только для пользователей)
     path('profile/', ProfileView.as_view(), name='profile'),
     path('profile/edit/', ProfileUpdateView.as_view(), name='profile_edit'),

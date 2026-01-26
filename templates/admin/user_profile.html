@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+
+{% block title %}Профиль пользователя {{ user_obj.username }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Заголовок и навигация -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="fw-bold mb-2">Профиль пользователя</h1>
+            <p class="text-muted mb-0">{{ user_obj.get_full_name|default:user_obj.username }}</p>
+        </div>
+        <div>
+            <a href="{% url 'admin_user_list' %}" class="btn btn-outline-dark btn-sm me-2">
+                ← Назад к списку
+            </a>
+            <a href="{% url 'admin_user_list' %}?search={{ user_obj.username }}" 
+               class="btn btn-outline-primary btn-sm">
+                Похожие
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Основная информация -->
+        <div class="col-lg-4">
+            <div class="card border">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h5 class="fw-bold mb-0">Основная информация</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="bg-light rounded-circle p-4 d-inline-block mb-3">
+                            <i class="bi bi-person fs-2 text-muted"></i>
+                        </div>
+                        <h4 class="fw-bold">{{ user_obj.get_full_name|default:user_obj.username }}</h4>
+                        <p class="text-muted">@{{ user_obj.username }}</p>
+                        
+                        <div class="mb-3">
+                            {% if user_obj.is_superuser %}
+                            <span class="badge bg-danger">Суперпользователь</span>
+                            {% elif user_obj.is_staff %}
+                            <span class="badge bg-warning">Персонал</span>
+                            {% else %}
+                            <span class="badge bg-success">Гость</span>
+                            {% endif %}
+                            
+                            {% if user_obj.is_active %}
+                            <span class="badge bg-success ms-2">Активен</span>
+                            {% else %}
+                            <span class="badge bg-danger ms-2">Неактивен</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Email:</span>
+                                <span class="fw-medium">{{ user_obj.email|default:"Не указан" }}</span>
+                            </div>
+                        </div>
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Дата регистрации:</span>
+                                <span>{{ user_obj.date_joined|date:"d.m.Y H:i" }}</span>
+                            </div>
+                        </div>
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Последний вход:</span>
+                                <span>{{ user_obj.last_login|date:"d.m.Y H:i"|default:"Никогда" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Действия -->
+            <div class="card border mt-4">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h5 class="fw-bold mb-0">Действия</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <form method="post" action="{% url 'admin_toggle_user_active' user_obj.id %}" 
+                              class="d-grid">
+                            {% csrf_token %}
+                            <button type="submit" class="btn {% if user_obj.is_active %}btn-warning{% else %}btn-success{% endif %}">
+                                <i class="bi bi-power me-2"></i>
+                                {% if user_obj.is_active %}Деактивировать{% else %}Активировать{% endif %}
+                            </button>
+                        </form>
+                        
+                        <a href="#" class="btn btn-outline-primary">
+                            <i class="bi bi-envelope me-2"></i>Отправить сообщение
+                        </a>
+                        
+                        <form method="post" action="{% url 'admin_delete_user' user_obj.id %}" 
+                              class="d-grid"
+                              onsubmit="return confirm('Вы уверены, что хотите удалить пользователя {{ user_obj.username }}? Это действие нельзя отменить.')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger">
+                                <i class="bi bi-trash me-2"></i>Удалить пользователя
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Профиль гостя -->
+        <div class="col-lg-4">
+            <div class="card border h-100">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h5 class="fw-bold mb-0">Профиль гостя</h5>
+                </div>
+                <div class="card-body">
+                    {% if profile %}
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Телефон:</span>
+                                <span class="fw-medium">{{ profile.phone|default:"Не указан" }}</span>
+                            </div>
+                        </div>
+                        
+                        {% if profile.birth_date %}
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Дата рождения:</span>
+                                <span>{{ profile.birth_date|date:"d.m.Y" }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if profile.gender %}
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Пол:</span>
+                                <span>{{ profile.get_gender_display }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if profile.address %}
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Адрес:</span>
+                                <span class="text-end">{{ profile.address|truncatechars:30 }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if profile.snils %}
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">СНИЛС:</span>
+                                <span>{{ profile.snils }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Заполнение профиля:</span>
+                                <span class="fw-bold {% if profile.is_profile_complete %}text-success{% else %}text-warning{% endif %}">
+                                    {{ profile.calculate_profile_completion|floatformat:0 }}%
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <a href="#" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-pencil me-2"></i>Редактировать профиль
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-person-x fs-1 text-muted mb-3"></i>
+                        <p class="text-muted">Профиль гостя не создан</p>
+                        <a href="#" class="btn btn-outline-primary">
+                            <i class="bi bi-plus-circle me-2"></i>Создать профиль
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Статистика и бронирования -->
+        <div class="col-lg-4">
+            <div class="card border">
+                <div class="card-header bg-white border-bottom py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0">Статистика</h5>
+                        <a href="{% url 'admin_booking_list' %}?user={{ user_obj.id }}" class="btn btn-sm btn-outline-primary">
+                            Все бронирования
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <div class="border rounded-3 p-3 text-center">
+                                <div class="fw-bold fs-4">{{ total_bookings }}</div>
+                                <div class="text-muted small">Всего бронирований</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded-3 p-3 text-center">
+                                <div class="fw-bold fs-4">{{ active_bookings }}</div>
+                                <div class="text-muted small">Активных</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h6 class="fw-bold mb-3">Последние бронирования</h6>
+                    {% if bookings %}
+                    <div class="list-group list-group-flush">
+                        {% for booking in bookings|slice:":3" %}
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="fw-medium">
+                                        {% if booking.room %}
+                                        {{ booking.room.name }}
+                                        {% else %}
+                                        {{ booking.get_room_type_display }}
+                                        {% endif %}
+                                    </div>
+                                    <small class="text-muted">
+                                        {{ booking.check_in|date:"d.m.Y" }} – {{ booking.check_out|date:"d.m.Y" }}
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold">{{ booking.total_price }} ₽</div>
+                                    <span class="badge bg-{% if booking.status == 'confirmed' %}success{% elif booking.status == 'pending' %}warning{% else %}secondary{% endif %}">
+                                        {{ booking.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-3">
+                        <p class="text-muted">Нет бронирований</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

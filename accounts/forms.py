@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from .models import GuestProfile, Booking, Room
 from django.core.exceptions import ValidationError
 from datetime import date
+import re
 
 
 class GuestRegistrationForm(UserCreationForm):
@@ -203,3 +204,35 @@ class BookingForm(forms.ModelForm):
         if commit:
             booking.save()
         return booking
+
+
+# Добавьте эти формы в конец forms.py
+
+class AdminCreateUserForm(UserCreationForm):
+    """Форма для создания пользователя администратором"""
+    email = forms.EmailField(required=True)
+    first_name = forms.CharField(max_length=30, required=True)
+    last_name = forms.CharField(max_length=30, required=True)
+    phone = forms.CharField(max_length=20, required=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'first_name', 'last_name', 'phone', 'password1', 'password2']
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = self.cleaned_data['email']
+        user.first_name = self.cleaned_data['first_name']
+        user.last_name = self.cleaned_data['last_name']
+
+        if commit:
+            user.save()
+            # Создаем профиль гостя
+            GuestProfile.objects.create(
+                user=user,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                phone=self.cleaned_data['phone'],
+                email=user.email
+            )
+        return user

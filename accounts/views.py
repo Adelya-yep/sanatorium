@@ -23,6 +23,8 @@ from django.contrib.auth.models import User
 # Добавьте этот импорт в начало views.py, после других импортов
 from .mixins import StaffRequiredMixin, NotStaffMixin
 
+# В импортах из django.views.generic добавьте DetailView
+from django.views.generic import CreateView, TemplateView, ListView, UpdateView, DetailView
 # ГЛАВНАЯ СТРАНИЦА (публичная)
 def home(request):
     """Главная страница - информационная для всех."""
@@ -130,30 +132,40 @@ class RoomListView(ListView):
     paginate_by = 6
 
     def get_queryset(self):
-        queryset = Room.objects.filter(is_active=True)
+        queryset = Booking.objects.select_related('user', 'room').order_by('-created_at')
 
-        # Фильтр по типу
-        room_type = self.request.GET.get('type')
+        # Фильтры
+        status = self.request.GET.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+
+        room_type = self.request.GET.get('room_type')
         if room_type:
-            queryset = queryset.filter(type=room_type)
+            queryset = queryset.filter(room__type=room_type)
 
-        # Фильтр по вместимости
-        capacity = self.request.GET.get('capacity')
-        if capacity:
-            if capacity == '4':
-                queryset = queryset.filter(capacity__gte=4)
-            else:
-                queryset = queryset.filter(capacity=capacity)
-
-        # Фильтр по максимальной цене
-        max_price = self.request.GET.get('max_price')
-        if max_price:
+        # Фильтр по пользователю
+        user_id = self.request.GET.get('user')
+        if user_id:
             try:
-                queryset = queryset.filter(price_per_day__lte=float(max_price))
+                queryset = queryset.filter(user_id=int(user_id))
             except ValueError:
                 pass
 
-        return queryset.order_by('type', 'price_per_day')
+        date_from = self.request.GET.get('date_from')
+        if date_from:
+            try:
+                queryset = queryset.filter(check_in__gte=date_from)
+            except ValueError:
+                pass
+
+        date_to = self.request.GET.get('date_to')
+        if date_to:
+            try:
+                queryset = queryset.filter(check_out__lte=date_to)
+            except ValueError:
+                pass
+
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -251,8 +263,50 @@ class AdminUserListView(StaffRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        return User.objects.all().order_by('-date_joined')
+        queryset = User.objects.all().order_by('-date_joined')
 
+        # Поиск по имени, email, username
+        search = self.request.GET.get('search', '')
+        if search:
+            queryset = queryset.filter(
+                Q(username__icontains=search) |
+                Q(email__icontains=search) |
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search)
+            )
+
+        # Фильтр по роли
+        role = self.request.GET.get('role', '')
+        if role == 'guest':
+            queryset = queryset.filter(is_staff=False, is_superuser=False)
+        elif role == 'staff':
+            queryset = queryset.filter(is_staff=True)
+
+        # Фильтр по активности
+        active = self.request.GET.get('active', '')
+        if active == 'false':
+            queryset = queryset.filter(is_active=False)
+        elif active == 'true':
+            queryset = queryset.filter(is_active=True)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        all_users = User.objects.all()
+
+        # Статистика
+        context['total_users'] = all_users.count()
+        context['guest_count'] = all_users.filter(is_staff=False, is_superuser=False).count()
+        context['staff_count'] = all_users.filter(is_staff=True).count()
+        context['active_count'] = all_users.filter(is_active=True).count()
+
+        # Параметры фильтров для сохранения в форме
+        context['search_query'] = self.request.GET.get('search', '')
+        context['role_filter'] = self.request.GET.get('role', '')
+        context['active_filter'] = self.request.GET.get('active', '')
+
+        return context
 
 # АУТЕНТИФИКАЦИЯ (доступна всем)
 class SignUpView(CreateView):
@@ -521,3 +575,89 @@ def redirect_based_on_role(view_func):
         return view_func(request, *args, **kwargs)
 
     return wrapper
+
+
+@require_POST
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def admin_toggle_user_active(request, user_id):
+    """Включение/выключение пользователя"""
+    try:
+        user = User.objects.get(id=user_id)
+        user.is_active = not user.is_active
+        user.save()
+
+        action = "активирован" if user.is_active else "деактивирован"
+        messages.success(request, f"Пользователь {user.username} {action}")
+    except User.DoesNotExist:
+        messages.error(request, "Пользователь не найден")
+
+    return redirect('admin_user_list')
+
+
+@require_POST
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def admin_delete_user(request, user_id):
+    """Удаление пользователя"""
+    try:
+        user = User.objects.get(id=user_id)
+        username = user.username
+
+        # Проверяем, есть ли связанные бронирования
+        if user.bookings.exists():
+            messages.error(request,
+                           f"Нельзя удалить пользователя {username}, так как у него есть бронирования. "
+                           f"Сначала удалите или переназначьте бронирования."
+                           )
+        else:
+            # Удаляем профиль гостя если есть
+            GuestProfile.objects.filter(user=user).delete()
+            user.delete()
+            messages.success(request, f"Пользователь {username} удален")
+
+    except User.DoesNotExist:
+        messages.error(request, "Пользователь не найден")
+
+    return redirect('admin_user_list')
+
+
+from .forms import AdminCreateUserForm  # Добавьте в импорты
+
+
+# Добавьте этот класс после AdminUserListView
+@method_decorator(login_required, name='dispatch')
+class AdminCreateUserView(StaffRequiredMixin, CreateView):
+    """Создание нового пользователя администратором"""
+    model = User
+    form_class = AdminCreateUserForm
+    template_name = 'admin/user_create.html'
+
+    def get_success_url(self):
+        messages.success(self.request, f'Пользователь {self.object.username} успешно создан!')
+        return reverse_lazy('admin_user_list')
+
+
+@method_decorator(login_required, name='dispatch')
+class AdminUserProfileView(StaffRequiredMixin, DetailView):
+    """Просмотр профиля пользователя администратором"""
+    model = User
+    template_name = 'admin/user_profile.html'
+    context_object_name = 'user_obj'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.get_object()
+
+        try:
+            profile = GuestProfile.objects.get(user=user)
+            context['profile'] = profile
+        except GuestProfile.DoesNotExist:
+            context['profile'] = None
+
+        # Бронирования пользователя
+        context['bookings'] = Booking.objects.filter(user=user).select_related('room').order_by('-created_at')
+        context['total_bookings'] = context['bookings'].count()
+        context['active_bookings'] = context['bookings'].filter(status__in=['pending', 'confirmed']).count()
+
+        return context
