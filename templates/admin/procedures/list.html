@@ -1,10 +1,149 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'base.html' %}
 
-</body>
-</html>
+{% block title %}Процедуры санатория{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Заголовок и фильтры -->
+    <div class="row mb-5">
+        <div class="col-lg-8">
+            <h1 class="fw-bold mb-3">Процедуры и услуги</h1>
+            <p class="text-muted">Выберите процедуры для вашего оздоровления и восстановления</p>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">Фильтр по категориям</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{% url 'procedures_list' %}" class="btn btn-sm btn-outline-secondary">
+                            Все
+                        </a>
+                        {% for category in categories %}
+                        <a href="{% url 'procedures_list' %}?category={{ category.id }}" 
+                           class="btn btn-sm btn-outline-primary">
+                            {{ category.name }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Карточки процедур -->
+    <div class="row g-4">
+        {% for procedure in procedures %}
+        <div class="col-lg-4 col-md-6">
+            <div class="card border h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="card-title fw-bold mb-1">{{ procedure.name }}</h5>
+                            <span class="badge bg-light text-dark border">{{ procedure.category.name }}</span>
+                        </div>
+                        <div class="text-end">
+                            <div class="h4 fw-bold text-primary">{{ procedure.price }} ₽</div>
+                            <small class="text-muted">за процедуру</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-clock text-muted me-2"></i>
+                            <span>Длительность: {{ procedure.duration }} мин</span>
+                        </div>
+                        <p class="card-text text-muted">{{ procedure.description|truncatechars:150 }}</p>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'appointment_create' %}?procedure={{ procedure.id }}" 
+                           class="btn btn-primary">
+                            <i class="bi bi-calendar-plus me-2"></i>Записаться
+                        </a>
+                        <button type="button" class="btn btn-outline-secondary" 
+                                data-bs-toggle="modal" data-bs-target="#procedureModal{{ procedure.id }}">
+                            Подробнее
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Модальное окно с подробной информацией -->
+        <div class="modal fade" id="procedureModal{{ procedure.id }}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">{{ procedure.name }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <span class="badge bg-primary">{{ procedure.category.name }}</span>
+                                    <span class="badge bg-light text-dark border ms-2">{{ procedure.duration }} мин</span>
+                                </div>
+                                <h4 class="text-primary fw-bold">{{ procedure.price }} ₽</h4>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <a href="{% url 'appointment_create' %}?procedure={{ procedure.id }}" 
+                                   class="btn btn-primary btn-lg">
+                                    <i class="bi bi-calendar-plus me-2"></i>Записаться сейчас
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6 class="fw-bold mb-2">Описание процедуры</h6>
+                            <p>{{ procedure.description }}</p>
+                        </div>
+                        
+                        {% if procedure.contraindications %}
+                        <div class="mb-4">
+                            <h6 class="fw-bold mb-2">Противопоказания</h6>
+                            <p class="text-muted">{{ procedure.contraindications }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if procedure.preparation %}
+                        <div class="mb-4">
+                            <h6 class="fw-bold mb-2">Подготовка к процедуре</h6>
+                            <p class="text-muted">{{ procedure.preparation }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                        <a href="{% url 'appointment_create' %}?procedure={{ procedure.id }}" 
+                           class="btn btn-primary">Записаться</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="bi bi-clipboard-x fs-1 text-muted mb-3"></i>
+                <h5 class="text-muted">Процедуры временно недоступны</h5>
+                <p class="text-muted">Пожалуйста, проверьте позже или обратитесь к администратору</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+.modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+</style>
+{% endblock %}

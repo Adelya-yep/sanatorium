@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+
+{% block title %}Запись на процедуру{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border">
+                <div class="card-header bg-white border-bottom py-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h1 class="fw-bold mb-2">Запись на процедуру</h1>
+                            <p class="text-muted mb-0">Выберите удобное время для посещения процедуры</p>
+                        </div>
+                        <a href="{% url 'procedures_list' %}" class="btn btn-outline-dark btn-sm">
+                            ← Назад к процедурам
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <form method="post" id="appointmentForm">
+                        {% csrf_token %}
+                        
+                        <!-- Шаг 1: Выбор процедуры -->
+                        <div class="mb-4">
+                            <h5 class="fw-bold mb-3">1. Выберите процедуру</h5>
+                            <div class="mb-3">
+                                {{ form.procedure.label_tag }}
+                                {{ form.procedure }}
+                                {% if form.procedure.errors %}
+                                <div class="text-danger small mt-1">{{ form.procedure.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Шаг 2: Выбор врача -->
+                        <div class="mb-4">
+                            <h5 class="fw-bold mb-3">2. Выберите специалиста</h5>
+                            <div class="mb-3">
+                                {{ form.doctor.label_tag }}
+                                {{ form.doctor }}
+                                {% if form.doctor.errors %}
+                                <div class="text-danger small mt-1">{{ form.doctor.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Шаг 3: Выбор даты и времени -->
+                        <div class="mb-4">
+                            <h5 class="fw-bold mb-3">3. Выберите дату и время</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        {{ form.appointment_date.label_tag }}
+                                        {{ form.appointment_date }}
+                                        {% if form.appointment_date.errors %}
+                                        <div class="text-danger small mt-1">{{ form.appointment_date.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        {{ form.appointment_time.label_tag }}
+                                        {{ form.appointment_time }}
+                                        {% if form.appointment_time.errors %}
+                                        <div class="text-danger small mt-1">{{ form.appointment_time.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Доступные слоты (будет заполняться через AJAX) -->
+                            <div id="availableSlots" class="mt-3" style="display: none;">
+                                <h6 class="fw-bold mb-2">Доступное время:</h6>
+                                <div class="d-flex flex-wrap gap-2" id="slotsContainer"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Шаг 4: Примечания -->
+                        <div class="mb-4">
+                            <h5 class="fw-bold mb-3">4. Дополнительная информация</h5>
+                            <div class="mb-3">
+                                {{ form.notes.label_tag }}
+                                {{ form.notes }}
+                                {% if form.notes.errors %}
+                                <div class="text-danger small mt-1">{{ form.notes.errors }}</div>
+                                {% endif %}
+                                <div class="form-text">Укажите особенности состояния здоровья или пожелания</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Предупреждения -->
+                        <div class="alert alert-info mb-4">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <small>
+                                Пожалуйста, приходите за 10-15 минут до назначенного времени. 
+                                При отмене записи просим уведомлять не менее чем за 24 часа.
+                            </small>
+                        </div>
+                        
+                        <!-- Кнопки -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'procedures_list' %}" class="btn btn-outline-secondary">
+                                Отмена
+                            </a>
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="bi bi-calendar-check me-2"></i>Записаться
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Информация о выбранной процедуре -->
+            <div class="card border mt-4">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">Информация о процедурах</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bi bi-clock text-primary me-2"></i>
+                                <span>Длительность: <span id="procedureDuration">-</span> мин</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bi bi-cash text-primary me-2"></i>
+                                <span>Стоимость: <span id="procedurePrice">-</span> ₽</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bi bi-person-badge text-primary me-2"></i>
+                                <span>Специализация врача: <span id="doctorSpecialization">-</span></span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-award text-primary me-2"></i>
+                                <span>Стаж: <span id="doctorExperience">-</span> лет</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript для динамического обновления информации -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const procedureSelect = document.getElementById('id_procedure');
+    const doctorSelect = document.getElementById('id_doctor');
+    const appointmentDate = document.getElementById('id_appointment_date');
+    const appointmentTime = document.getElementById('id_appointment_time');
+    
+    // Данные о процедурах и врачах (заполняются через Django template)
+    const proceduresData = {
+        {% for proc in form.procedure.field.queryset %}
+        {{ proc.id }}: {
+            duration: {{ proc.duration }},
+            price: {{ proc.price }},
+            name: "{{ proc.name|escapejs }}"
+        },
+        {% endfor %}
+    };
+    
+    const doctorsData = {
+        {% for doc in form.doctor.field.queryset %}
+        {{ doc.id }}: {
+            specialization: "{{ doc.specialization|escapejs }}",
+            experience: {{ doc.experience }},
+            name: "{{ doc.user.get_full_name|default:doc.user.username|escapejs }}"
+        },
+        {% endfor %}
+    };
+    
+    // Обновление информации при выборе процедуры
+    procedureSelect.addEventListener('change', function() {
+        const procId = this.value;
+        if (procId && proceduresData[procId]) {
+            document.getElementById('procedureDuration').textContent = proceduresData[procId].duration;
+            document.getElementById('procedurePrice').textContent = proceduresData[procId].price;
+        }
+    });
+    
+    // Обновление информации при выборе врача
+    doctorSelect.addEventListener('change', function() {
+        const docId = this.value;
+        if (docId && doctorsData[docId]) {
+            document.getElementById('doctorSpecialization').textContent = doctorsData[docId].specialization;
+            document.getElementById('doctorExperience').textContent = doctorsData[docId].experience;
+        }
+    });
+    
+    // Загрузка доступных слотов при выборе даты и врача
+    appointmentDate.addEventListener('change', loadAvailableSlots);
+    doctorSelect.addEventListener('change', loadAvailableSlots);
+    
+    function loadAvailableSlots() {
+        const doctorId = doctorSelect.value;
+        const date = appointmentDate.value;
+        
+        if (!doctorId || !date) return;
+        
+        // Здесь будет AJAX запрос для получения доступных слотов
+        console.log('Загрузка слотов для врача', doctorId, 'на дату', date);
+        
+        // Примерная логика (нужно реализовать API endpoint)
+        /*
+        fetch(`/api/doctor/${doctorId}/available-slots/?date=${date}`)
+            .then(response => response.json())
+            .then(data => {
+                displayAvailableSlots(data.slots);
+            });
+        */
+    }
+    
+    function displayAvailableSlots(slots) {
+        const container = document.getElementById('slotsContainer');
+        const slotsDiv = document.getElementById('availableSlots');
+        
+        if (slots.length > 0) {
+            container.innerHTML = '';
+            slots.forEach(slot => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-outline-primary btn-sm';
+                btn.textContent = slot.time;
+                btn.onclick = () => {
+                    appointmentTime.value = slot.time;
+                };
+                container.appendChild(btn);
+            });
+            slotsDiv.style.display = 'block';
+        } else {
+            slotsDiv.style.display = 'none';
+        }
+    }
+    
+    // Инициализация при загрузке
+    if (procedureSelect.value) procedureSelect.dispatchEvent(new Event('change'));
+    if (doctorSelect.value) doctorSelect.dispatchEvent(new Event('change'));
+});
+</script>
+
+<style>
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+</style>
+{% endblock %}

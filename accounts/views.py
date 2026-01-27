@@ -231,10 +231,28 @@ def admin_change_booking_status(request):
     try:
         booking = Booking.objects.get(id=booking_id)
         old_status = booking.status
+
+        # ПРОВЕРКА: нельзя изменять статус отмененных бронирований (кроме повторной отмены)
+        if booking.status == 'cancelled':
+            messages.error(request,
+                           f'Нельзя изменить статус отмененного бронирования #{booking_id}. '
+                           f'Создайте новое бронирование.'
+                           )
+            return redirect('admin_booking_list')
+
+        # ПРОВЕРКА: нельзя отменять завершенные бронирования
+        if booking.status == 'completed' and new_status == 'cancelled':
+            messages.error(request,
+                           f'Нельзя отменить завершенное бронирование #{booking_id}.'
+                           )
+            return redirect('admin_booking_list')
+
+        # Изменяем статус
         booking.status = new_status
         booking.save()
 
         messages.success(request, f'Статус бронирования #{booking_id} изменен: {old_status} → {new_status}')
+
     except Booking.DoesNotExist:
         messages.error(request, 'Бронирование не найдено')
 
@@ -787,7 +805,7 @@ class AdminDoctorsListView(StaffRequiredMixin, ListView):
 class AdminAppointmentsListView(StaffRequiredMixin, ListView):
     """Управление записями (админ)"""
     model = Appointment
-    template_name = 'admin/procedures/appointments.html'
+    template_name = 'admin/procedures/patient_appointments.html'
     context_object_name = 'appointments'
     paginate_by = 20
 

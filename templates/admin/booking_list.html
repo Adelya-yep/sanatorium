@@ -114,34 +114,60 @@
                                             data-bs-toggle="dropdown">
                                         Действия
                                     </button>
-                                    <ul class="dropdown-menu">
-                                        <li>
-                                            <form method="post" action="{% url 'admin_change_booking_status' %}" class="d-inline">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="booking_id" value="{{ booking.id }}">
-                                                <input type="hidden" name="status" value="confirmed">
-                                                <button type="submit" class="dropdown-item">
-                                                    Подтвердить
-                                                </button>
-                                            </form>
-                                        </li>
-                                        <li>
-                                            <form method="post" action="{% url 'admin_change_booking_status' %}" class="d-inline">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="booking_id" value="{{ booking.id }}">
-                                                <input type="hidden" name="status" value="cancelled">
-                                                <button type="submit" class="dropdown-item">
-                                                    Отменить
-                                                </button>
-                                            </form>
-                                        </li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <a href="#" class="dropdown-item text-danger">
-                                                <i class="bi bi-trash me-1"></i>Удалить
-                                            </a>
-                                        </li>
-                                    </ul>
+                                    <!-- В выпадающем меню действий добавьте проверки: -->
+<!-- В выпадающем меню действий: -->
+<ul class="dropdown-menu">
+    <!-- Кнопка "Подтвердить" показывается только если статус не "confirmed" и не "cancelled" -->
+    {% if booking.status != 'confirmed' and booking.status != 'cancelled' and booking.status != 'completed' %}
+    <li>
+        <form method="post" action="{% url 'admin_change_booking_status' %}">
+            {% csrf_token %}
+            <input type="hidden" name="booking_id" value="{{ booking.id }}">
+            <input type="hidden" name="status" value="confirmed">
+            <button type="submit" class="dropdown-item">
+                <i class="bi bi-check-circle me-2"></i>Подтвердить
+            </button>
+        </form>
+    </li>
+    {% endif %}
+
+    <!-- Кнопка "Отменить" показывается если статус не "cancelled" и не "completed" -->
+    {% if booking.status != 'cancelled' and booking.status != 'completed' %}
+    <li>
+        <form method="post" action="{% url 'admin_change_booking_status' %}">
+            {% csrf_token %}
+            <input type="hidden" name="booking_id" value="{{ booking.id }}">
+            <input type="hidden" name="status" value="cancelled">
+            <button type="submit" class="dropdown-item">
+                <i class="bi bi-x-circle me-2"></i>Отменить
+            </button>
+        </form>
+    </li>
+    {% endif %}
+
+    <!-- Кнопка "Завершить" показывается если статус "confirmed" -->
+    {% if booking.status == 'confirmed' %}
+    <li>
+        <form method="post" action="{% url 'admin_change_booking_status' %}">
+            {% csrf_token %}
+            <input type="hidden" name="booking_id" value="{{ booking.id }}">
+            <input type="hidden" name="status" value="completed">
+            <button type="submit" class="dropdown-item">
+                <i class="bi bi-check2-all me-2"></i>Завершить
+            </button>
+        </form>
+    </li>
+    {% endif %}
+
+    <li><hr class="dropdown-divider"></li>
+
+    <!-- Информационные сообщения -->
+    {% if booking.status == 'completed' %}
+    <li><span class="dropdown-item text-muted small"><i class="bi bi-info-circle me-2"></i>Завершено</span></li>
+    {% elif booking.status == 'cancelled' %}
+    <li><span class="dropdown-item text-muted small"><i class="bi bi-info-circle me-2"></i>Отменено</span></li>
+    {% endif %}
+</ul>
                                 </div>
                             </td>
                         </tr>

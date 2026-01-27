@@ -194,6 +194,22 @@ class Booking(models.Model):
         self.total_price = self.get_price_per_day() * self.days
         super().save(*args, **kwargs)
 
+    def can_change_status(self, new_status):
+        """Проверка возможности изменения статуса"""
+        # Отмененные бронирования нельзя изменять
+        if self.status == 'cancelled' and new_status != 'cancelled':
+            return False, "Отмененное бронирование нельзя изменить"
+
+        # Завершенные бронирования нельзя отменять
+        if self.status == 'completed' and new_status == 'cancelled':
+            return False, "Завершенное бронирование нельзя отменить"
+
+        # Нельзя подтвердить бронирование с прошедшей датой
+        if new_status == 'confirmed' and self.check_in < date.today():
+            return False, "Нельзя подтвердить бронирование с прошедшей датой заезда"
+
+        return True, ""
+
 
 class ProcedureCategory(models.Model):
     """Категория процедур"""

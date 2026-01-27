@@ -76,5 +76,4 @@ urlpatterns = [
     path('api/room/availability/', api_room_availability, name='api_room_availability'),
     path('api/room/<int:room_id>/busy-dates/', api_room_busy_dates, name='api_room_busy_dates'),
 
-
 ]

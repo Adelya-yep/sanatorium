@@ -13,7 +13,7 @@
         }
         .form-card {
             background: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            border: none; margin: auto; /* Убрал max-width, чтобы карточки были гибкими */
+            border: none; margin: auto;
         }
         .form-input {
             border: 2px solid #e9ecef; border-radius: 12px; padding: 15px;
@@ -61,10 +61,6 @@
             <li class="nav-item">
                 <a class="nav-link text-white {% if 'admin/bookings' in request.path %}active{% endif %}"
                    href="{% url 'admin_booking_list' %}">Бронирования</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link text-white {% if 'admin/rooms' in request.path %}active{% endif %}"
-                   href="{% url 'admin_room_list' %}">Номера</a>
             </li>
         {% else %}
             <!-- Меню для обычного пользователя -->
