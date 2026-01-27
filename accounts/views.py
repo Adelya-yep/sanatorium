@@ -1,30 +1,27 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
-from django.views.generic import CreateView, TemplateView, ListView, UpdateView
+from django.views.generic import CreateView, TemplateView, ListView, UpdateView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.http import HttpResponseRedirect, JsonResponse
-from django.db.models import Count, Sum, Avg, Q, Max  # Добавить Avg и Q
+from django.db.models import Count, Sum, Avg, Q, Max
 
 # Импорт из datetime
 from datetime import date, timedelta, datetime
 import json
 
 # Импорт из других модулей проекта
-from .forms import GuestRegistrationForm, BookingForm, GuestProfileForm
-from .models import Booking, Room, GuestProfile
+from .forms import GuestRegistrationForm, BookingForm, GuestProfileForm, AdminCreateUserForm
+from .procedure_forms import AppointmentForm, MedicalRecordForm, ScheduleSlotForm
+from .models import Booking, Room, GuestProfile, Procedure, ProcedureCategory, Doctor, ScheduleSlot, Appointment, MedicalRecord, TreatmentEntry
 
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
-# Добавьте этот импорт в начало views.py, после других импортов
 from .mixins import StaffRequiredMixin, NotStaffMixin
-
-# В импортах из django.views.generic добавьте DetailView
-from django.views.generic import CreateView, TemplateView, ListView, UpdateView, DetailView
 # ГЛАВНАЯ СТРАНИЦА (публичная)
 def home(request):
     """Главная страница - информационная для всех."""
@@ -132,40 +129,30 @@ class RoomListView(ListView):
     paginate_by = 6
 
     def get_queryset(self):
-        queryset = Booking.objects.select_related('user', 'room').order_by('-created_at')
+        queryset = Room.objects.filter(is_active=True)  # <-- ИСПРАВЛЕНО!
 
-        # Фильтры
-        status = self.request.GET.get('status')
-        if status:
-            queryset = queryset.filter(status=status)
-
-        room_type = self.request.GET.get('room_type')
+        # Фильтр по типу
+        room_type = self.request.GET.get('type')
         if room_type:
-            queryset = queryset.filter(room__type=room_type)
+            queryset = queryset.filter(type=room_type)
 
-        # Фильтр по пользователю
-        user_id = self.request.GET.get('user')
-        if user_id:
+        # Фильтр по вместимости
+        capacity = self.request.GET.get('capacity')
+        if capacity:
+            if capacity == '4':
+                queryset = queryset.filter(capacity__gte=4)
+            else:
+                queryset = queryset.filter(capacity=capacity)
+
+        # Фильтр по максимальной цене
+        max_price = self.request.GET.get('max_price')
+        if max_price:
             try:
-                queryset = queryset.filter(user_id=int(user_id))
+                queryset = queryset.filter(price_per_day__lte=float(max_price))
             except ValueError:
                 pass
 
-        date_from = self.request.GET.get('date_from')
-        if date_from:
-            try:
-                queryset = queryset.filter(check_in__gte=date_from)
-            except ValueError:
-                pass
-
-        date_to = self.request.GET.get('date_to')
-        if date_to:
-            try:
-                queryset = queryset.filter(check_out__lte=date_to)
-            except ValueError:
-                pass
-
-        return queryset
+        return queryset.order_by('type', 'price_per_day')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -661,3 +648,183 @@ class AdminUserProfileView(StaffRequiredMixin, DetailView):
         context['active_bookings'] = context['bookings'].filter(status__in=['pending', 'confirmed']).count()
 
         return context
+
+
+# Добавьте импорты
+
+
+
+# Представления для пациентов
+
+class ProcedureListView(ListView):
+    """Список процедур (публичный)"""
+    model = Procedure
+    template_name = 'procedures/list.html'
+    context_object_name = 'procedures'
+
+    def get_queryset(self):
+        queryset = Procedure.objects.filter(is_active=True).select_related('category')
+
+        category_id = self.request.GET.get('category')
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['categories'] = ProcedureCategory.objects.all()
+        return context
+
+
+@method_decorator(login_required, name='dispatch')
+class AppointmentCreateView(NotStaffMixin, CreateView):
+    """Создание записи на процедуру"""
+    model = Appointment
+    form_class = AppointmentForm
+    template_name = 'procedures/appointment_create.html'
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['patient'] = self.request.user.guestprofile
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['available_slots'] = self.get_available_slots()
+        return context
+
+    def get_available_slots(self):
+        """Получение доступных слотов для записи"""
+        # Здесь будет логика получения свободных слотов
+        return []
+
+    def form_valid(self, form):
+        appointment = form.save(commit=False)
+        appointment.patient = self.request.user.guestprofile
+
+        # Проверка доступности слота
+        if not self.is_slot_available(appointment):
+            messages.error(self.request, 'Выбранное время уже занято')
+            return self.form_invalid(form)
+
+        appointment.save()
+        messages.success(self.request, 'Запись на процедуру успешно создана!')
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('patient_appointments')
+
+    def is_slot_available(self, appointment):
+        """Проверка доступности слота"""
+        existing_appointments = Appointment.objects.filter(
+            doctor=appointment.doctor,
+            appointment_date=appointment.appointment_date,
+            appointment_time=appointment.appointment_time,
+            status__in=['scheduled', 'completed']
+        )
+        return not existing_appointments.exists()
+
+
+@method_decorator(login_required, name='dispatch')
+class PatientAppointmentsView(NotStaffMixin, ListView):
+    """Список записей пациента"""
+    model = Appointment
+    template_name = 'procedures/patient_appointments.html'
+    context_object_name = 'appointments'
+
+    def get_queryset(self):
+        profile = get_object_or_404(GuestProfile, user=self.request.user)
+        return Appointment.objects.filter(
+            patient=profile
+        ).select_related('procedure', 'doctor').order_by('-appointment_date', '-appointment_time')
+
+
+@method_decorator(login_required, name='dispatch')
+class MedicalRecordView(NotStaffMixin, TemplateView):
+    """Медицинская карта пациента"""
+    template_name = 'procedures/medical_record.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        profile = get_object_or_404(GuestProfile, user=self.request.user)
+
+        # Активная медицинская карта
+        medical_record = MedicalRecord.objects.filter(
+            patient=profile,
+            is_active=True
+        ).first()
+
+        context['medical_record'] = medical_record
+
+        if medical_record:
+            context['treatment_entries'] = TreatmentEntry.objects.filter(
+                medical_record=medical_record
+            ).select_related('appointment', 'appointment__procedure')
+
+        return context
+
+
+# Админские представления для управления
+
+@method_decorator(login_required, name='dispatch')
+class AdminProcedureListView(StaffRequiredMixin, ListView):
+    """Управление процедурами (админ)"""
+    model = Procedure
+    template_name = 'admin/procedures/list.html'
+    context_object_name = 'procedures'
+
+
+@method_decorator(login_required, name='dispatch')
+class AdminDoctorsListView(StaffRequiredMixin, ListView):
+    """Управление врачами (админ)"""
+    model = Doctor
+    template_name = 'admin/procedures/doctors.html'
+    context_object_name = 'doctors'
+
+
+@method_decorator(login_required, name='dispatch')
+class AdminAppointmentsListView(StaffRequiredMixin, ListView):
+    """Управление записями (админ)"""
+    model = Appointment
+    template_name = 'admin/procedures/appointments.html'
+    context_object_name = 'appointments'
+    paginate_by = 20
+
+    def get_queryset(self):
+        queryset = Appointment.objects.select_related(
+            'patient', 'procedure', 'doctor'
+        ).order_by('-appointment_date', '-appointment_time')
+
+        # Фильтры
+        status = self.request.GET.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+
+        doctor_id = self.request.GET.get('doctor')
+        if doctor_id:
+            queryset = queryset.filter(doctor_id=doctor_id)
+
+        date_from = self.request.GET.get('date_from')
+        if date_from:
+            queryset = queryset.filter(appointment_date__gte=date_from)
+
+        date_to = self.request.GET.get('date_to')
+        if date_to:
+            queryset = queryset.filter(appointment_date__lte=date_to)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['doctors'] = Doctor.objects.all()
+        context['status_choices'] = Appointment.STATUS_CHOICES
+        return context
+
+
+@method_decorator(login_required, name='dispatch')
+class AdminMedicalRecordsView(StaffRequiredMixin, ListView):
+    """Медицинские карты пациентов (админ)"""
+    model = MedicalRecord
+    template_name = 'admin/procedures/medical_records.html'
+    context_object_name = 'medical_records'

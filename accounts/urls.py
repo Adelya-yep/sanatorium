@@ -8,12 +8,17 @@ from .views import (
     BookingCreateView, UserBookingListView, AdminBookingListView,
     RoomListView, AdminRoomListView, AdminUserListView,
     ProfileUpdateView, booking_cancel, admin_change_booking_status,
-    # API функции
     api_room_availability, api_room_busy_dates,
-    # Новые функции для управления пользователями
     admin_toggle_user_active, admin_delete_user,
-    # Декораторы
-    redirect_based_on_role
+    redirect_based_on_role,
+    ProcedureListView,
+    AppointmentCreateView,
+    PatientAppointmentsView,
+    MedicalRecordView,
+    AdminProcedureListView,
+    AdminDoctorsListView,
+    AdminAppointmentsListView,
+    AdminMedicalRecordsView,
 )
 
 urlpatterns = [
@@ -49,7 +54,7 @@ urlpatterns = [
     path('admin/users/', AdminUserListView.as_view(), name='admin_user_list'),
     path('admin/users/<int:user_id>/toggle-active/', admin_toggle_user_active, name='admin_toggle_user_active'),
     path('admin/users/<int:user_id>/delete/', admin_delete_user, name='admin_delete_user'),
-path('admin/users/<int:pk>/profile/', AdminUserProfileView.as_view(), name='admin_user_profile'),
+    path('admin/users/<int:pk>/profile/', AdminUserProfileView.as_view(), name='admin_user_profile'),
 
     path('admin/users/create/', AdminCreateUserView.as_view(), name='admin_user_create'),
     # Профиль (только для пользователей)
@@ -57,9 +62,19 @@ path('admin/users/<int:pk>/profile/', AdminUserProfileView.as_view(), name='admi
     path('profile/edit/', ProfileUpdateView.as_view(), name='profile_edit'),
 
     # Процедуры (только для пользователей)
-    path('procedures/', ProceduresView.as_view(), name='procedures'),
+    path('procedures/', ProcedureListView.as_view(), name='procedures_list'),
+    path('procedures/appointment/create/', AppointmentCreateView.as_view(), name='appointment_create'),
+    path('procedures/my-appointments/', PatientAppointmentsView.as_view(), name='patient_appointments'),
+    path('procedures/medical-record/', MedicalRecordView.as_view(), name='patient_medical_record'),
+    # Для админов
+    path('admin/procedures/', AdminProcedureListView.as_view(), name='admin_procedures'),
+    path('admin/procedures/doctors/', AdminDoctorsListView.as_view(), name='admin_doctors'),
+    path('admin/procedures/appointments/', AdminAppointmentsListView.as_view(), name='admin_appointments'),
+    path('admin/procedures/medical-records/', AdminMedicalRecordsView.as_view(), name='admin_medical_records'),
 
     # API endpoints
     path('api/room/availability/', api_room_availability, name='api_room_availability'),
     path('api/room/<int:room_id>/busy-dates/', api_room_busy_dates, name='api_room_busy_dates'),
+
+
 ]
