@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
-
+from datetime import date
 
 class GuestProfile(models.Model):
     GENDER_CHOICES = [
@@ -43,18 +43,6 @@ class GuestProfile(models.Model):
     email = models.EmailField(blank=True, verbose_name='Email')
     address = models.TextField(max_length=200, blank=True, verbose_name='Адрес проживания')
 
-    # Документы
-    passport_series = models.CharField(max_length=4, blank=True, verbose_name='Серия паспорта')
-    passport_number = models.CharField(max_length=6, blank=True, verbose_name='Номер паспорта')
-    passport_issued_by = models.TextField(max_length=200, blank=True, verbose_name='Кем выдан')
-    passport_issue_date = models.DateField(null=True, blank=True, verbose_name='Дата выдачи')
-
-    # Медицинские документы
-    snils = models.CharField(max_length=14, blank=True, verbose_name='СНИЛС',
-                             help_text='Формат: XXX-XXX-XXX XX')
-    oms_policy = models.CharField(max_length=16, blank=True, verbose_name='Полис ОМС')
-    medical_book_number = models.CharField(max_length=50, blank=True, verbose_name='Номер мед. книжки')
-
     # Медицинская информация
     blood_type = models.CharField(max_length=3, choices=BLOOD_TYPE_CHOICES, blank=True, verbose_name='Группа крови')
     chronic_diseases = models.TextField(max_length=500, blank=True, verbose_name='Хронические заболевания')
@@ -74,13 +62,48 @@ class GuestProfile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата регистрации')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
     is_profile_complete = models.BooleanField(default=False, verbose_name='Профиль заполнен')
+    DOCUMENT_STATUS = [
+        ('not_uploaded', 'Не загружены'),
+        ('pending', 'На проверке'),
+        ('verified', 'Проверены'),
+        ('rejected', 'Отклонены'),
+    ]
+
+    document_status = models.CharField(
+        max_length=20,
+        choices=DOCUMENT_STATUS,
+        default='not_uploaded',
+        verbose_name='Статус документов'
+    )
+    document_verified_at = models.DateTimeField(null=True, blank=True, verbose_name='Дата проверки')
+    document_verified_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='verified_profiles',
+        verbose_name='Кем проверены'
+    )
+
+    # Маскированные данные для отображения
+    passport_masked = models.CharField(max_length=20, blank=True, verbose_name='Паспорт (маскированный)')
+    snils_masked = models.CharField(max_length=20, blank=True, verbose_name='СНИЛС (маскированный)')
+
+    # Технические поля (оставляем)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата регистрации')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
+    is_profile_complete = models.BooleanField(default=False, verbose_name='Профиль заполнен')
 
     class Meta:
         verbose_name = 'Профиль пациента'
         verbose_name_plural = 'Профили пациентов'
+        permissions = [
+            ('can_view_sensitive_data', 'Может просматривать чувствительные данные'),
+            ('can_verify_documents', 'Может проверять документы'),
+        ]
 
     def __str__(self):
-        return f"{self.last_name} {self.first_name} {self.middle_name or ''}".strip()
+        return f"{self.last_name} {self.first_name}"
 
     @property
     def full_name(self):
@@ -95,11 +118,19 @@ class GuestProfile(models.Model):
             )
         return None
 
+    def save(self, *args, **kwargs):
+        # Автоматически обновляем маскированные данные
+        if not self.passport_masked and self.document_status == 'verified':
+            self.passport_masked = self.generate_masked_passport()
+        super().save(*args, **kwargs)
+
+    def generate_masked_passport(self):
+        """Генерирует маскированное представление паспорта"""
+        return "** ** ******"  # По умолчанию
+
     def calculate_profile_completion(self):
-        """Рассчитывает процент заполнения профиля"""
-        required_fields = ['first_name', 'last_name', 'phone', 'email',
-                           'birth_date', 'passport_series', 'passport_number',
-                           'snils', 'oms_policy']
+        """Рассчитывает процент заполнения профиля БЕЗ чувствительных данных"""
+        required_fields = ['first_name', 'last_name', 'phone', 'email', 'birth_date']
 
         filled = 0
         for field in required_fields:
@@ -369,3 +400,50 @@ class TreatmentEntry(models.Model):
 
     def __str__(self):
         return f"{self.appointment.procedure} - {self.performed_at.date()}"
+
+
+# accounts/models.py - ИЗМЕНИТЕ поля verified_by и uploaded_by:
+
+class EncryptedDocument(models.Model):
+    """Временная модель для хранения зашифрованных документов"""
+
+    DOCUMENT_TYPES = [
+        ('passport', 'Паспорт'),
+        ('snils', 'СНИЛС'),
+        ('oms', 'Полис ОМС'),
+        ('medical', 'Медицинская книжка'),
+        ('other', 'Другое'),
+    ]
+
+    profile = models.ForeignKey('GuestProfile', on_delete=models.CASCADE, related_name='documents')
+    document_type = models.CharField(max_length=20, choices=DOCUMENT_TYPES)
+
+    # Зашифрованные данные
+    encrypted_data = models.TextField(verbose_name='Зашифрованные данные', blank=True)
+
+    # Метаданные
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата загрузки')
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                    related_name='uploaded_document_files',  # ИЗМЕНЕНО
+                                    verbose_name='Загружено')
+    verified = models.BooleanField(default=False, verbose_name='Проверено')
+    verified_at = models.DateTimeField(null=True, blank=True, verbose_name='Дата проверки')
+    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                    related_name='verified_document_files',  # ИЗМЕНЕНО
+                                    verbose_name='Кем проверен')
+
+    class Meta:
+        verbose_name = 'Зашифрованный документ'
+        verbose_name_plural = 'Зашифрованные документы'
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"{self.get_document_type_display()} для {self.profile}"
+
+    def get_masked_display(self):
+        """Возвращает маскированные данные для отображения"""
+        if self.document_type == 'passport':
+            return "** ** ******"
+        elif self.document_type == 'snils':
+            return "***-***-*** **"
+        return "***"

@@ -1,0 +1,97 @@
+<!-- templates/admin/verify_documents.html -->
+{% extends 'base.html' %}
+
+{% block title %}Проверка документов{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h1 class="fw-bold text-success">Проверка документов</h1>
+            <p class="text-muted">Пользователь: {{ profile_user.get_full_name }}</p>
+        </div>
+        <a href="{% url 'admin_user_list' %}" class="btn btn-outline-secondary">
+            ← К списку пользователей
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- Информация о пользователе -->
+            <div class="form-card p-4 mb-4">
+                <h4 class="fw-bold mb-3">Информация о пользователе</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>ФИО:</strong> {{ profile.full_name }}</p>
+                        <p><strong>Email:</strong> {{ profile_user.email }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Телефон:</strong> {{ profile.phone }}</p>
+                        <p><strong>Статус документов:</strong>
+                            <span class="badge
+                                {% if profile.document_status == 'verified' %}bg-success
+                                {% elif profile.document_status == 'pending' %}bg-warning
+                                {% elif profile.document_status == 'rejected' %}bg-danger
+                                {% else %}bg-secondary{% endif %}">
+                                {{ profile.get_document_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Документы -->
+            <div class="form-card p-4">
+                <h4 class="fw-bold mb-4">Документы</h4>
+
+                {% if documents %}
+                <div class="list-group">
+                    {% for doc in documents %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h5 class="mb-1">{{ doc.get_document_type_display }}</h5>
+                                <small class="text-muted">
+                                    Загружен: {{ doc.uploaded_at|date:"d.m.Y H:i" }}
+                                </small>
+                                <p class="mb-0 mt-2">
+                                    <strong>Маскированные данные:</strong> {{ doc.get_masked_display }}
+                                </p>
+                            </div>
+                            <div class="text-end">
+                                {% if doc.verified %}
+                                <span class="badge bg-success">Проверен</span>
+                                <br>
+                                <small class="text-muted">
+                                    {{ doc.verified_by.get_full_name }}<br>
+                                    {{ doc.verified_at|date:"d.m.Y" }}
+                                </small>
+                                {% else %}
+                                <form method="post" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="document_id" value="{{ doc.id }}">
+                                    <button type="submit" name="action" value="verify"
+                                            class="btn btn-sm btn-success">
+                                        ✅ Проверить
+                                    </button>
+                                    <button type="submit" name="action" value="reject"
+                                            class="btn btn-sm btn-outline-danger">
+                                        ❌ Отклонить
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    Пользователь еще не загрузил документы.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

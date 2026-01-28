@@ -10,9 +10,47 @@
             <h1 class="fw-bold text-success mb-2">Мой профиль</h1>
             <p class="text-muted">Личные и медицинские данные</p>
         </div>
-        <a href="{% url 'profile_edit' %}" class="btn btn-custom text-white">
-            Редактировать профиль
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{% url 'upload_documents' %}" class="btn btn-custom text-white">
+                📄 Документы
+            </a>
+            <a href="{% url 'profile_edit' %}" class="btn btn-outline-success">
+                ✏️ Редактировать
+            </a>
+        </div>
+    </div>
+
+    <!-- Статус документов -->
+    <div class="form-card p-4 mb-5">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="fw-bold mb-2">📄 Статус документов</h4>
+                <p class="mb-0">
+                    Статус:
+                    <span class="badge
+                        {% if profile.document_status == 'verified' %}bg-success
+                        {% elif profile.document_status == 'pending' %}bg-warning
+                        {% elif profile.document_status == 'rejected' %}bg-danger
+                        {% else %}bg-secondary{% endif %}">
+                        {{ profile.get_document_status_display }}
+                    </span>
+                </p>
+                {% if profile.document_status == 'verified' %}
+                    <small class="text-muted">
+                        Проверены {{ profile.document_verified_at|date:"d.m.Y" }}
+                    </small>
+                {% endif %}
+            </div>
+            <div>
+                {% if profile.document_status == 'verified' %}
+                    <span class="text-success">✅ Готово к заселению</span>
+                {% else %}
+                    <a href="{% url 'upload_documents' %}" class="btn btn-sm btn-custom text-white">
+                        {% if profile.document_status == 'not_uploaded' %}Загрузить{% else %}Обновить{% endif %} документы
+                    </a>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
     <!-- Прогресс заполнения -->
@@ -24,18 +62,18 @@
             </span>
         </div>
         <div class="progress" style="height: 10px;">
-            <div class="progress-bar bg-success" role="progressbar" 
+            <div class="progress-bar bg-success" role="progressbar"
                  style="width: {{ profile_completion }}%"
-                 aria-valuenow="{{ profile_completion }}" 
-                 aria-valuemin="0" 
+                 aria-valuenow="{{ profile_completion }}"
+                 aria-valuemin="0"
                  aria-valuemax="100">
             </div>
         </div>
         <small class="text-muted mt-2 d-block">
             {% if profile_completion < 70 %}
-            Заполните профиль до 70% для быстрого оформления брони
+                Заполните профиль до 70% для быстрого оформления брони
             {% else %}
-            Профиль заполнен достаточно для бронирования
+                Профиль заполнен достаточно для бронирования
             {% endif %}
         </small>
     </div>
@@ -47,52 +85,58 @@
                 <h4 class="fw-bold text-success mb-4">
                     <i class="bi bi-person me-2"></i>Личные данные
                 </h4>
-                
+
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <p class="mb-2"><strong>ФИО:</strong></p>
                     </div>
                     <div class="col-md-6">
-                        <p>{{ profile.full_name }}</p>
+                        <p>{{ profile.full_name|default:"Не указано" }}</p>
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <p class="mb-2"><strong>Дата рождения:</strong></p>
                     </div>
                     <div class="col-md-6">
-                        <p>{{ profile.birth_date|date:"d.m.Y" }} ({{ profile.age }} лет)</p>
+                        <p>
+                            {% if profile.birth_date %}
+                                {{ profile.birth_date|date:"d.m.Y" }} ({{ profile.age }} лет)
+                            {% else %}
+                                Не указана
+                            {% endif %}
+                        </p>
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <p class="mb-2"><strong>Пол:</strong></p>
                     </div>
                     <div class="col-md-6">
-                        <p>{{ profile.get_gender_display }}</p>
+                        <p>{{ profile.get_gender_display|default:"Не указан" }}</p>
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <p class="mb-2"><strong>Телефон:</strong></p>
                     </div>
                     <div class="col-md-6">
-                        <p>{{ profile.phone }}</p>
+                        <p>{{ profile.phone|default:"Не указан" }}</p>
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <p class="mb-2"><strong>Email:</strong></p>
                     </div>
                     <div class="col-md-6">
-                        <p>{{ profile.email }}</p>
+                        <p>{{ profile.email|default:"Не указан" }}</p>
                     </div>
                 </div>
-                
+
                 <div class="row">
                     <div class="col-md-6">
                         <p class="mb-2"><strong>Адрес:</strong></p>
@@ -104,57 +148,85 @@
             </div>
         </div>
 
-        <!-- Паспортные данные -->
+        <!-- Паспортные данные (МАСКИРОВАННЫЕ) -->
         <div class="col-lg-6">
             <div class="form-card p-4 h-100">
                 <h4 class="fw-bold text-success mb-4">
-                    <i class="bi bi-passport me-2"></i>Паспортные данные
+                    <i class="bi bi-shield-check me-2"></i>Документы
                 </h4>
-                
+
+                <!-- Паспорт -->
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <p class="mb-2"><strong>Паспорт:</strong></p>
                     </div>
                     <div class="col-md-6">
-                        <p>{{ profile.passport_series }} {{ profile.passport_number }}</p>
+                        {% if profile.passport_masked %}
+                            <p>{{ profile.passport_masked }}
+                                {% if profile.document_status == 'verified' %}
+                                    <span class="badge bg-success bg-opacity-25 text-success ms-2">✓</span>
+                                {% endif %}
+                            </p>
+                        {% else %}
+                            <p class="text-muted">Не загружен</p>
+                        {% endif %}
                     </div>
                 </div>
-                
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <p class="mb-2"><strong>Кем выдан:</strong></p>
-                    </div>
-                    <div class="col-md-6">
-                        <p>{{ profile.passport_issued_by|default:"Не указано"|linebreaksbr }}</p>
-                    </div>
-                </div>
-                
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <p class="mb-2"><strong>Дата выдачи:</strong></p>
-                    </div>
-                    <div class="col-md-6">
-                        <p>{{ profile.passport_issue_date|date:"d.m.Y"|default:"Не указана" }}</p>
-                    </div>
-                </div>
-                
+
+                <!-- СНИЛС -->
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <p class="mb-2"><strong>СНИЛС:</strong></p>
                     </div>
                     <div class="col-md-6">
-                        <p>{{ profile.snils|default:"Не указан" }}</p>
+                        {% if profile.snils_masked %}
+                            <p>{{ profile.snils_masked }}
+                                {% if profile.document_status == 'verified' %}
+                                    <span class="badge bg-success bg-opacity-25 text-success ms-2">✓</span>
+                                {% endif %}
+                            </p>
+                        {% else %}
+                            <p class="text-muted">Не загружен</p>
+                        {% endif %}
                     </div>
                 </div>
-                
-                <div class="row">
+
+                <!-- Полис ОМС -->
+                <div class="row mb-3">
                     <div class="col-md-6">
                         <p class="mb-2"><strong>Полис ОМС:</strong></p>
                     </div>
                     <div class="col-md-6">
-                        <p>{{ profile.oms_policy|default:"Не указан" }}</p>
+                        {% if profile.document_status == 'verified' %}
+                            <p class="text-success">✅ Наличие подтверждено</p>
+                        {% else %}
+                            <p class="text-muted">Требуется проверка</p>
+                        {% endif %}
                     </div>
                 </div>
+
+                <!-- Мед. книжка -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Мед. книжка:</strong></p>
+                    </div>
+                    <div class="col-md-6">
+                        {% if profile.document_status == 'verified' %}
+                            <p class="text-success">✅ Наличие подтверждено</p>
+                        {% else %}
+                            <p class="text-muted">Требуется проверка</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Кнопка загрузки -->
+{% if profile.document_status != 'verified' %}
+<div class="mt-4 pt-3 border-top">
+    <a href="{% url 'upload_documents' %}" class="btn btn-custom w-100 text-white">
+        📤 {% if profile.document_status == 'not_uploaded' %}Загрузить документы{% else %}Обновить документы{% endif %}
+    </a>
+</div>
+{% endif %}
             </div>
         </div>
 
@@ -164,38 +236,38 @@
                 <h4 class="fw-bold text-success mb-4">
                     <i class="bi bi-heart-pulse me-2"></i>Медицинская информация
                 </h4>
-                
+
                 <div class="row g-4">
                     <div class="col-md-4">
                         <p class="mb-2"><strong>Группа крови:</strong></p>
                         <p>{{ profile.get_blood_type_display|default:"Не указана" }}</p>
                     </div>
-                    
-                    <div class="col-md-4">
-                        <p class="mb-2"><strong>Мед. книжка:</strong></p>
-                        <p>{{ profile.medical_book_number|default:"Не указана" }}</p>
-                    </div>
-                    
+
                     <div class="col-md-4">
                         <p class="mb-2"><strong>Питание:</strong></p>
-                        <p>{{ profile.get_preferred_diet_display }}</p>
+                        <p>{{ profile.get_preferred_diet_display|default:"Не указано" }}</p>
                     </div>
-                    
+
+                    <div class="col-md-4">
+                        <p class="mb-2"><strong>Трансфер:</strong></p>
+                        <p>{{ profile.need_transfer|yesno:"Нужен,Не нужен" }}</p>
+                    </div>
+
                     <div class="col-md-6">
                         <p class="mb-2"><strong>Хронические заболевания:</strong></p>
                         <p>{{ profile.chronic_diseases|default:"Не указаны"|linebreaksbr }}</p>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <p class="mb-2"><strong>Аллергии:</strong></p>
                         <p>{{ profile.allergies|default:"Не указаны"|linebreaksbr }}</p>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <p class="mb-2"><strong>Лекарственная непереносимость:</strong></p>
                         <p>{{ profile.drug_intolerance|default:"Не указана"|linebreaksbr }}</p>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <p class="mb-2"><strong>Противопоказания:</strong></p>
                         <p>{{ profile.contraindications|default:"Не указаны"|linebreaksbr }}</p>
@@ -210,26 +282,22 @@
                 <h4 class="fw-bold text-success mb-4">
                     <i class="bi bi-info-circle me-2"></i>Дополнительная информация
                 </h4>
-                
+
                 <div class="row g-4">
                     <div class="col-md-6">
                         <p class="mb-2"><strong>Особые пожелания:</strong></p>
                         <p>{{ profile.special_requests|default:"Нет"|linebreaksbr }}</p>
                     </div>
-                    
-                    <div class="col-md-6">
-                        <p class="mb-2"><strong>Трансфер:</strong></p>
-                        <p>{{ profile.need_transfer|yesno:"Нужен,Не нужен" }}</p>
-                    </div>
-                    
+
                     <div class="col-md-6">
                         <p class="mb-2"><strong>Экстренный контакт:</strong></p>
-                        <p>{{ profile.emergency_contact|default:"Не указан" }}</p>
-                    </div>
-                    
-                    <div class="col-md-6">
-                        <p class="mb-2"><strong>Телефон экстренной связи:</strong></p>
-                        <p>{{ profile.emergency_phone|default:"Не указан" }}</p>
+                        <p>
+                            {% if profile.emergency_contact and profile.emergency_phone %}
+                                {{ profile.emergency_contact }} ({{ profile.emergency_phone }})
+                            {% else %}
+                                Не указан
+                            {% endif %}
+                        </p>
                     </div>
                 </div>
             </div>
